@@ -1,6 +1,6 @@
 local M = {}
 
-function M.fetch_years(username)
+function M.fetch_contributions(username)
     local curl = require("plenary.curl")
     local url = string.format("https://github.com/%s?tab=contributions", username)
 
@@ -13,14 +13,14 @@ function M.fetch_years(username)
         return nil
     end
 
-    local contributions_matcher = '<tool%-tip.->(.-contributions on.-)</tool%-tip>'
+    local contributions_matcher = '<tool%-tip.->(.-contribution[s]? on.-)</tool%-tip>'
     local contributions = response.body:gmatch(contributions_matcher)
 
+    local contributions_list = {}
     for contribution in contributions do
-        print(contribution)
+        table.insert(contributions_list, contribution)
     end
-
-    return contributions
+    return contributions_list
 end
 
 return M
