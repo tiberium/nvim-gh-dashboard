@@ -6,22 +6,24 @@ local GitHubContribution = require("github_contrubution")
 
 ---Function to setup the plugin
 function M.setup()
-    local contributions_raw = gh.fetch_contributions("tiberium")
+    -- TODO: Parameterize the year
+    local year = 2024
 
-    if not contributions_raw then
+    local contributions_metadata = gh.fetch_contributions("tiberium", year)
+
+    if not contributions_metadata then
         print("Failed to fetch contributions.")
         return
     end
 
     local contributions = {}
-    for _, contribution_raw in ipairs(contributions_raw) do
-        local contribution = GitHubContribution.new(contribution_raw)
+    for _, contribution_metadata in ipairs(contributions_metadata) do
+        local contribution = GitHubContribution.new(contribution_metadata)
 
         table.insert(contributions, contribution)
     end
 
-    -- TODO: Parameterize the year
-    M.dashboard(contributions, 2024)
+    M.dashboard(contributions, year)
 end
 
 ---Fuction creating the dashboard buffer and filling it with data

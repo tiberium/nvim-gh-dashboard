@@ -1,23 +1,22 @@
 local Graph = {}
 Graph.__index = Graph
 
-
----@enum days
-local DAYS = {
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday",
-    "saturday",
-    "sunday"
-}
+-- ---@enum days
+-- local DAYS = {
+--     "Monday",
+--     "Tuesday",
+--     "Wednesday",
+--     "Thursday",
+--     "Friday",
+--     "Saturday",
+--     "Sunday"
+-- }
 
 
 ---@class Graph
 ---@field contributions GitHubContribution[] flat list of contributions from GitHub
 ---@field width number width of the graph or number of weeks to display
----@field grid table<days, GitHubContribution[]> grid of contributions
+---@field grid GitHubContribution[][] contributions grouped by week day (0 - 6)
 ---@field year number year of the contributions
 
 ---@param contributions GitHubContribution[]
@@ -31,9 +30,12 @@ function Graph.new(contributions, width, year)
     self.width = width or 0
     self.year = year or tonumber(os.date("%Y"))
 
-    self.grid = {}
-
-    -- local number_of_weeks = math.ceil(#self.contributions / #DAYS)
+    self.graph = {}
+    for i = 0, 6 do
+        self.graph[i] = vim.tbl_filter(function(contribution)
+            return contribution.day_of_week == i
+        end, self.contributions)
+    end
 
     return self
 end
@@ -52,6 +54,29 @@ function Graph:get_lines()
     table.insert(lines, "│                      GitHub Contributions                    │")
     table.insert(lines, "└──────────────────────────────────────────────────────────────┘")
     table.insert(lines, "Year: " .. self.year)
+    -- table.insert(lines, "\n")
+    -- table.insert(lines, "\n")
+
+    for i = 0, #self.graph do
+        local day_line = ""
+        for j, contribution in ipairs(self.graph[i]) do
+            if j == 1 and contribution.week_number == 1 then
+                day_line = day_line .. " "
+            end
+
+            if not contribution.counter then
+                print("contribution.counter is nil: " .. vim.inspect(contribution))
+            end
+            if string.match(contribution.counter, "+$") ~= nil then
+                day_line = day_line .. "A"
+            elseif tonumber(contribution.counter) > 0 then
+                day_line = day_line .. "X"
+            else
+                day_line = day_line .. " "
+            end
+        end
+        table.insert(lines, day_line)
+    end
 
     return lines
 end
