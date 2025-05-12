@@ -1,18 +1,6 @@
 local Graph = {}
 Graph.__index = Graph
 
--- ---@enum days
--- local DAYS = {
---     "Monday",
---     "Tuesday",
---     "Wednesday",
---     "Thursday",
---     "Friday",
---     "Saturday",
---     "Sunday"
--- }
-
-
 ---@class Graph
 ---@field contributions GitHubContribution[] flat list of contributions from GitHub
 ---@field width number width of the graph or number of weeks to display
@@ -53,9 +41,9 @@ function Graph:get_lines()
     table.insert(lines, "┌──────────────────────────────────────────────────────────────┐")
     table.insert(lines, "│                      GitHub Contributions                    │")
     table.insert(lines, "└──────────────────────────────────────────────────────────────┘")
+    table.insert(lines, "")
     table.insert(lines, "Year: " .. self.year)
-    -- table.insert(lines, "\n")
-    -- table.insert(lines, "\n")
+    table.insert(lines, "")
 
     for i = 0, #self.graph do
         local day_line = ""
