@@ -5,9 +5,9 @@ GitHubContribution.__index = GitHubContribution
 ---@field counter string -- format: <number>[+]
 ---@field month string -- format: <month> (e.g. "January", "February", ...)
 ---@field day string -- format: <day> (e.g. "1", "2", ..., "31")
----@field raw string format: `<couter | No> contribution|s on <month> <day>.`
----@field weekday_number number 0 - 6 (0 = Sunday, 1 = Monday, ..., 6 = Saturday) as GitHub codes
----@field week_number number week number of the year (0 - 52)
+---@field raw string -- format: `<couter | No> contribution|s on <month> <day>.`
+---@field weekday_number number -- 0 - 6 (0 = Sunday, 1 = Monday, ..., 6 = Saturday) as GitHub codes
+---@field week_number number -- week number of the year (0 - 52)
 
 ---@param contribution_metadata ContributionMetadata
 ---@return GitHubContribution | nil
@@ -29,7 +29,7 @@ function GitHubContribution.new(contribution_metadata --[[@as ContributionMetada
 
     -- validate unpacked values
     if not counter or not month or not day then
-        print("Invalid contribution format: " .. contribution_metadata)
+        print("Invalid contribution format: " .. contribution_metadata.contribution_tooltip)
         return nil
     end
 

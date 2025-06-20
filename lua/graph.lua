@@ -20,6 +20,10 @@ function Graph.new(contributions, year)
         self.graph[i] = vim.tbl_filter(function(contribution)
             return contribution.weekday_number == i
         end, self.contributions)
+
+        if self.graph[i][1].week_number ~= 0 then
+            table.insert(self.graph[i], 1, false)
+        end
     end
 
     return self
@@ -45,10 +49,14 @@ function Graph:get_lines()
     for i = 0, #self.graph do
         local day_line = ""
         for _, contribution in ipairs(self.graph[i]) do
-            if string.match(contribution.counter, "+$") ~= nil then
-                day_line = day_line .. "A"
-            elseif tonumber(contribution.counter) > 0 then
-                day_line = day_line .. "X"
+            if contribution then
+                if string.match(contribution.counter, "+$") ~= nil then
+                    day_line = day_line .. "A"
+                elseif tonumber(contribution.counter) > 0 then
+                    day_line = day_line .. "X"
+                else
+                    day_line = day_line .. " "
+                end
             else
                 day_line = day_line .. " "
             end

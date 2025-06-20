@@ -8,9 +8,9 @@ ContributionMetadata.__index = ContributionMetadata
 ---@field week string
 ---@field contribution_tooltip string
 
----@param day string
----@param week string
----@param contribution_tooltip string
+---@param day string -- 0-6 (0 = Sunday, 1 = Monday, ..., 6 = Saturday) as GitHub codes; row number
+---@param week string -- week number of the year (0 - 52); column number
+---@param contribution_tooltip string -- format: `<couter | No> contribution|s on <month> <day>.`
 function ContributionMetadata.new(day, week, contribution_tooltip)
     local self = setmetatable({}, ContributionMetadata)
     self.day = day
@@ -18,6 +18,8 @@ function ContributionMetadata.new(day, week, contribution_tooltip)
     self.contribution_tooltip = contribution_tooltip
     return self
 end
+
+M.ContributionMetadata = ContributionMetadata
 
 ---@param username string GitHub username
 ---@param year number|nil Year to fetch contributions for
