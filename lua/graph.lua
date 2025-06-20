@@ -3,25 +3,22 @@ Graph.__index = Graph
 
 ---@class Graph
 ---@field contributions GitHubContribution[] flat list of contributions from GitHub
----@field width number width of the graph or number of weeks to display
 ---@field grid GitHubContribution[][] contributions grouped by week day (0 - 6)
 ---@field year number year of the contributions
 
 ---@param contributions GitHubContribution[]
----@param width number
 ---@param year number
 ---@return Graph
-function Graph.new(contributions, width, year)
+function Graph.new(contributions, year)
     local self = setmetatable({}, Graph)
 
     self.contributions = contributions or {}
-    self.width = width or 0
     self.year = year or tonumber(os.date("%Y"))
 
     self.graph = {}
     for i = 0, 6 do
         self.graph[i] = vim.tbl_filter(function(contribution)
-            return contribution.day_of_week == i
+            return contribution.weekday_number == i
         end, self.contributions)
     end
 
@@ -47,14 +44,7 @@ function Graph:get_lines()
 
     for i = 0, #self.graph do
         local day_line = ""
-        for j, contribution in ipairs(self.graph[i]) do
-            if j == 1 and contribution.week_number == 1 then
-                day_line = day_line .. " "
-            end
-
-            if not contribution.counter then
-                print("contribution.counter is nil: " .. vim.inspect(contribution))
-            end
+        for _, contribution in ipairs(self.graph[i]) do
             if string.match(contribution.counter, "+$") ~= nil then
                 day_line = day_line .. "A"
             elseif tonumber(contribution.counter) > 0 then

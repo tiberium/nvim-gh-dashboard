@@ -36,9 +36,10 @@ function M.dashboard(contributions, year)
     vim.bo.swapfile = false
 
     local win_id = vim.api.nvim_get_current_win()
-    local width = vim.api.nvim_win_get_width(win_id)
+    -- TODO Needed later
+    -- local width = vim.api.nvim_win_get_width(win_id)
 
-    local contributions_graph = Graph.new(contributions, width, year)
+    local contributions_graph = Graph.new(contributions, year)
     local graph_lines = contributions_graph:get_lines()
 
     vim.api.nvim_buf_set_lines(0, 0, -1, false, graph_lines)

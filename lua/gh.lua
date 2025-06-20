@@ -41,14 +41,6 @@ function M.fetch_contributions(username, year)
         return nil
     end
 
-    -- -- Write response to a file for debugging
-    -- local file = io.open("response.html", "w")
-    -- if not file then
-    --     error("Could not open file for writing")
-    -- end
-    -- file:write(response.body)
-    -- file:close()
-
     local contributions_matcher =
     '<tool%-tip.-for="contribution%-day%-component%-(%d+)%-([%d]+)".->(.-contribution[s]? on.-)</tool%-tip>'
     local contributions = response.body:gmatch(contributions_matcher)

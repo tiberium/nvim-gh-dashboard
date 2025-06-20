@@ -2,11 +2,11 @@ local GitHubContribution = {}
 GitHubContribution.__index = GitHubContribution
 
 ---@class GitHubContribution
----@field month string
----@field day string
----@field counter string
+---@field counter string -- format: <number>[+]
+---@field month string -- format: <month> (e.g. "January", "February", ...)
+---@field day string -- format: <day> (e.g. "1", "2", ..., "31")
 ---@field raw string format: `<couter | No> contribution|s on <month> <day>.`
----@field day_of_week number 0 - 6 (0 = Sunday, 1 = Monday, ..., 6 = Saturday) as GitHub codes
+---@field weekday_number number 0 - 6 (0 = Sunday, 1 = Monday, ..., 6 = Saturday) as GitHub codes
 ---@field week_number number week number of the year (0 - 52)
 
 ---@param contribution_metadata ContributionMetadata
@@ -19,7 +19,7 @@ function GitHubContribution.new(contribution_metadata --[[@as ContributionMetada
 
     self.raw = contribution_metadata.contribution_tooltip
 
-    self.day_of_week = tonumber(contribution_metadata.day)
+    self.weekday_number = tonumber(contribution_metadata.day)
     self.week_number = tonumber(contribution_metadata.week)
 
     -- unpack contribution
