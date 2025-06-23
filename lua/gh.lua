@@ -6,7 +6,7 @@ ContributionMetadata.__index = ContributionMetadata
 ---@class ContributionMetadata
 ---@field day string
 ---@field week string
----@field contribution_tooltip string
+---@field tooltip string
 
 ---@param day string -- 0-6 (0 = Sunday, 1 = Monday, ..., 6 = Saturday) as GitHub codes; row number
 ---@param week string -- week number of the year (0 - 52); column number
@@ -15,7 +15,7 @@ function ContributionMetadata.new(day, week, contribution_tooltip)
     local self = setmetatable({}, ContributionMetadata)
     self.day = day
     self.week = week
-    self.contribution_tooltip = contribution_tooltip
+    self.tooltip = contribution_tooltip
     return self
 end
 
@@ -48,8 +48,8 @@ function M.fetch_contributions(username, year)
     local contributions = response.body:gmatch(contributions_matcher)
 
     local contributions_list = {}
-    for day, week, contribution in contributions do
-        table.insert(contributions_list, ContributionMetadata.new(day, week, contribution))
+    for day, week, tooltip in contributions do
+        table.insert(contributions_list, ContributionMetadata.new(day, week, tooltip))
     end
     return contributions_list
 end
