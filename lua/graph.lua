@@ -27,7 +27,7 @@ function Graph.new(contributions, year)
         end
     end
 
-    self.height = 13
+    self.height = 7  -- 7 as there are 7 days in a week
 
     return self
 end
@@ -40,14 +40,6 @@ function Graph:get_lines()
         print("nv-gh-dashboard: Error: No contributions fetched from GitHub")
         return lines
     end
-
-    -- Add a simple line
-    table.insert(lines, "┌──────────────────────────────────────────────────────────────┐")
-    table.insert(lines, "│                      GitHub Contributions                    │")
-    table.insert(lines, "└──────────────────────────────────────────────────────────────┘")
-    table.insert(lines, "")
-    table.insert(lines, "Year: " .. self.year)
-    table.insert(lines, "")
 
     for i = 0, #self.graph do
         local day_line = ""
