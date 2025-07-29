@@ -1,7 +1,7 @@
 local M = {}
 
 local Graph = require("graph")
-local buffer_helpers = require("buffer_helpers")
+local buffer_helpers = require("buffer-helpers")
 
 ---Creates header lines for the dashboard
 ---@param year number
