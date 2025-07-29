@@ -1,15 +1,15 @@
 local M = {}
 
-local gh = require("gh")
+local GithubService = require("github-service")
 local Contribution = require("contribution")
-local dashboardView = require("dashboard-view")
+local DashboardView = require("dashboard-view")
 
 ---Function to setup the plugin
 function M.setup()
     -- TODO: Parameterize the year
     local year = 2024
 
-    local contributions_metadata = gh.fetch_contributions("tiberium", year)
+    local contributions_metadata = GithubService.fetch_contributions("tiberium", year)
 
     if not contributions_metadata then
         print("Failed to fetch contributions.")
@@ -23,7 +23,7 @@ function M.setup()
         table.insert(contributions, contribution)
     end
 
-    dashboardView.create_dashboard(contributions, year)
+    DashboardView.create_dashboard(contributions, year)
 end
 
 return M
