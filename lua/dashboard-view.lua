@@ -113,19 +113,23 @@ function M.display_contribution_details(buf_id, contributions_graph, total_heigh
         return
     end
 
-    local position_text = string.format("Position: Line %d, Column %d", line, col)
+    local tooltip = ""
 
     -- Calculate the line number where position info should be displayed
     -- It's at total_height + 1 (one empty line + position line)
     local position_line_idx = total_height + 1
 
+    local selected_contribution = contributions_graph.grid[line][col]
+    if (selected_contribution) then
+        tooltip = selected_contribution.tooltip or "No contribution!!!"
+    end
+
     -- Temporarily make buffer modifiable to update position
     vim.bo[buf_id].modifiable = true
     vim.bo[buf_id].readonly = false
 
-    -- Update the position line
-    vim.api.nvim_buf_set_lines(buf_id, position_line_idx, position_line_idx + 1, false, { position_text })
-
+    vim.api.nvim_buf_set_lines(buf_id, position_line_idx, position_line_idx + 1, false, { tooltip })
+    
     -- Make buffer read-only again
     vim.bo[buf_id].modifiable = false
     vim.bo[buf_id].readonly = true

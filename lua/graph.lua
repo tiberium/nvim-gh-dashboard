@@ -3,7 +3,7 @@ Graph.__index = Graph
 
 ---@class Graph
 ---@field contributions GitHubContribution[] flat list of contributions from GitHub
----@field grid GitHubContribution[][] contributions grouped by week day (0 - 6)
+---@field grid GitHubContribution[][] contributions grouped by week day (1 - 7)
 ---@field year number year of the contributions
 ---@field height number height of the graph in lines
 
@@ -16,14 +16,14 @@ function Graph.new(contributions, year)
     self.contributions = contributions or {}
     self.year = year or tonumber(os.date("%Y"))
 
-    self.graph = {}
-    for i = 0, 6 do
-        self.graph[i] = vim.tbl_filter(function(contribution)
-            return contribution.weekday_number == i
+    self.grid = {}
+    for i = 1, 7 do
+        self.grid[i] = vim.tbl_filter(function(contribution)
+            return contribution.weekday_number == i - 1
         end, self.contributions)
 
-        if self.graph[i][1].week_number ~= 0 then
-            table.insert(self.graph[i], 1, false)
+        if self.grid[i][1].week_number ~= 0 then
+            table.insert(self.grid[i], 1, false)
         end
     end
 
@@ -41,9 +41,9 @@ function Graph:get_lines()
         return lines
     end
 
-    for i = 0, #self.graph do
+    for i = 1, #self.grid do
         local day_line = ""
-        for _, contribution in ipairs(self.graph[i]) do
+        for _, contribution in ipairs(self.grid[i]) do
             if contribution then
                 if string.match(contribution.counter, "+$") ~= nil then
                     day_line = day_line .. "A"

@@ -6,7 +6,7 @@ GitHubContribution.__index = GitHubContribution
 ---@field month string -- format: <month> (e.g. "January", "February", ...)
 ---@field day string -- format: <day> (e.g. "1", "2", ..., "31")
 ---@field tooltip string -- format: `<couter | No> contribution|s on <month> <day>.`
----@field weekday_number number -- 0 - 6 (0 = Sunday, 1 = Monday, ..., 6 = Saturday) as GitHub codes
+---@field weekday_number number -- 1 - 7 (1 = Sunday, 2 = Monday, ..., 7 = Saturday). Note that GitHub codes from 0.
 ---@field week_number number -- week number of the year (0 - 52)
 
 ---@param metadata ContributionMetadata
