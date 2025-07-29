@@ -5,11 +5,17 @@ local Contribution = require("contribution")
 local DashboardView = require("dashboard-view")
 
 ---Function to setup the plugin
-function M.setup()
-    -- TODO: Parameterize the year
-    local year = 2024
+---@param opts table|nil Configuration options
+---@field opts.year number|nil Year to fetch contributions for (defaults to current year)
+---@field opts.username string|nil GitHub username (defaults to "torvalds")
+function M.setup(opts)
+    opts = opts or {}
+    
+    -- Set defaults
+    local year = opts.year or tonumber(os.date("%Y"))
+    local username = opts.username or "torvalds"
 
-    local contributions_metadata = GithubService.fetch_contributions("tiberium", year)
+    local contributions_metadata = GithubService.fetch_contributions(username, year)
 
     if not contributions_metadata then
         print("Failed to fetch contributions.")
@@ -23,7 +29,7 @@ function M.setup()
         table.insert(contributions, contribution)
     end
 
-    DashboardView.create_dashboard(contributions, year)
+    DashboardView.create_dashboard(contributions, year, username)
 end
 
 return M

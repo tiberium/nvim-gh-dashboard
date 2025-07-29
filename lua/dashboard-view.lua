@@ -5,14 +5,16 @@ local buffer_helpers = require("buffer-helpers")
 
 ---Creates header lines for the dashboard
 ---@param year number
+---@param username string
 ---@return string[]
-function M.create_header(year)
+function M.create_header(year, username)
     local header_lines = {}
     
     table.insert(header_lines, "┌──────────────────────────────────────────────────────────────┐")
     table.insert(header_lines, "│                      GitHub Contributions                    │")
     table.insert(header_lines, "└──────────────────────────────────────────────────────────────┘")
     table.insert(header_lines, "")
+    table.insert(header_lines, "User: " .. username)
     table.insert(header_lines, "Year: " .. year)
     table.insert(header_lines, "")
     
@@ -22,7 +24,8 @@ end
 ---Creates the dashboard buffer and fills it with data
 ---@param contributions Contribution[]
 ---@param year number
-function M.create_dashboard(contributions, year)
+---@param username string
+function M.create_dashboard(contributions, year, username)
     vim.cmd("enew")
     vim.bo.buftype = "nofile"
     vim.bo.bufhidden = "wipe"
@@ -37,7 +40,7 @@ function M.create_dashboard(contributions, year)
     local contributions_graph = Graph.new(contributions, year)
 
     local graph_lines = contributions_graph:get_lines()
-    local header_lines = M.create_header(year)
+    local header_lines = M.create_header(year, username)
     
     -- Combine header and graph
     local dashboard_lines = {}
