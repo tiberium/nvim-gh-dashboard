@@ -5,6 +5,7 @@ Graph.__index = Graph
 ---@field contributions GitHubContribution[] flat list of contributions from GitHub
 ---@field grid GitHubContribution[][] contributions grouped by week day (0 - 6)
 ---@field year number year of the contributions
+---@field height number height of the graph in lines
 
 ---@param contributions GitHubContribution[]
 ---@param year number
@@ -25,6 +26,8 @@ function Graph.new(contributions, year)
             table.insert(self.graph[i], 1, false)
         end
     end
+
+    self.height = 13
 
     return self
 end
