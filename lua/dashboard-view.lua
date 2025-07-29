@@ -1,6 +1,7 @@
 local M = {}
 
 local Graph = require("graph")
+local buffer_helpers = require("buffer_helpers")
 
 ---Creates header lines for the dashboard
 ---@param year number
@@ -73,7 +74,7 @@ function M.setup_cursor_tracking(buf_id, contributions_graph, total_height)
         group = group,
         buffer = buf_id,
         callback = function()
-            M.display_contribution_details(buf_id, contributions_graph, total_height)
+            M.update_contribution_details(buf_id, contributions_graph, total_height)
         end,
     })
 end
@@ -104,35 +105,22 @@ end
 ---@param buf_id number
 ---@param contributions_graph Graph
 ---@param total_height number
-function M.display_contribution_details(buf_id, contributions_graph, total_height)
-    local header_height = total_height - contributions_graph.height
-    local line, col = M.get_graph_cursor_position(contributions_graph, header_height)
+function M.update_contribution_details(buf_id, contributions_graph, total_height)
+    local line, col = M.get_graph_cursor_position(
+        contributions_graph,
+        total_height - contributions_graph.height
+    )
     
-    -- If cursor is outside the graph, don't update position
-    if not line then
-        return
-    end
-
     local tooltip = ""
-
-    -- Calculate the line number where position info should be displayed
-    -- It's at total_height + 1 (one empty line + position line)
-    local position_line_idx = total_height + 1
-
-    local selected_contribution = contributions_graph.grid[line][col]
-    if (selected_contribution) then
-        tooltip = selected_contribution.tooltip or "No contribution!!!"
+    if line then
+        local selected_contribution = contributions_graph.grid[line][col]
+        if (selected_contribution) then
+            tooltip = selected_contribution.tooltip
+        end
     end
 
-    -- Temporarily make buffer modifiable to update position
-    vim.bo[buf_id].modifiable = true
-    vim.bo[buf_id].readonly = false
-
-    vim.api.nvim_buf_set_lines(buf_id, position_line_idx, position_line_idx + 1, false, { tooltip })
-    
-    -- Make buffer read-only again
-    vim.bo[buf_id].modifiable = false
-    vim.bo[buf_id].readonly = true
+    local position_line_idx = total_height + 1
+    buffer_helpers.update_line(buf_id, position_line_idx, tooltip)
 end
 
 return M
