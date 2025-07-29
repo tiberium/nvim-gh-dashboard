@@ -1,7 +1,7 @@
 local M = {}
 
 local gh = require("gh")
-local GitHubContribution = require("github_contrubution")
+local Contribution = require("contribution")
 local dashboardView = require("dashboard-view")
 
 ---Function to setup the plugin
@@ -18,7 +18,7 @@ function M.setup()
 
     local contributions = {}
     for _, contribution_metadata in ipairs(contributions_metadata) do
-        local contribution = GitHubContribution.new(contribution_metadata)
+        local contribution = Contribution.new(contribution_metadata)
 
         table.insert(contributions, contribution)
     end

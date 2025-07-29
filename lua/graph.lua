@@ -2,12 +2,12 @@ local Graph = {}
 Graph.__index = Graph
 
 ---@class Graph
----@field contributions GitHubContribution[] flat list of contributions from GitHub
----@field grid GitHubContribution[][] contributions grouped by week day (1 - 7)
+---@field contributions Contribution[] flat list of contributions from GitHub
+---@field grid Contribution[][] contributions grouped by week day (1 - 7)
 ---@field year number year of the contributions
 ---@field height number height of the graph in lines
 
----@param contributions GitHubContribution[]
+---@param contributions Contribution[]
 ---@param year number
 ---@return Graph
 function Graph.new(contributions, year)

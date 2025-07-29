@@ -20,7 +20,7 @@ function M.create_header(year)
 end
 
 ---Creates the dashboard buffer and fills it with data
----@param contributions GitHubContribution[]
+---@param contributions Contribution[]
 ---@param year number
 function M.create_dashboard(contributions, year)
     vim.cmd("enew")

@@ -1,7 +1,7 @@
-local GitHubContribution = {}
-GitHubContribution.__index = GitHubContribution
+local Contribution = {}
+Contribution.__index = Contribution
 
----@class GitHubContribution
+---@class Contribution
 ---@field counter string -- format: <number>[+]
 ---@field month string -- format: <month> (e.g. "January", "February", ...)
 ---@field day string -- format: <day> (e.g. "1", "2", ..., "31")
@@ -10,9 +10,9 @@ GitHubContribution.__index = GitHubContribution
 ---@field week_number number -- week number of the year (0 - 52)
 
 ---@param metadata ContributionMetadata
----@return GitHubContribution | nil
-function GitHubContribution.new(metadata --[[@as ContributionMetadata]])
-    local self = setmetatable({}, GitHubContribution)
+---@return Contribution | nil
+function Contribution.new(metadata --[[@as ContributionMetadata]])
+    local self = setmetatable({}, Contribution)
     if metadata == nil then
         return nil
     end
@@ -40,4 +40,4 @@ function GitHubContribution.new(metadata --[[@as ContributionMetadata]])
     return self
 end
 
-return GitHubContribution
+return Contribution
