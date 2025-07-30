@@ -25,7 +25,8 @@ end
 ---@param contributions Contribution[]
 ---@param year number
 ---@param username string
-function M.create_dashboard(contributions, year, username)
+---@param chars table Characters configuration
+function M.create_dashboard(contributions, year, username, chars)
     vim.cmd("enew")
     vim.bo.buftype = "nofile"
     vim.bo.bufhidden = "wipe"
@@ -37,7 +38,7 @@ function M.create_dashboard(contributions, year, username)
     -- local width = vim.api.nvim_win_get_width(win_id)
 
     -- Create header and graph separately
-    local contributions_graph = Graph.new(contributions, year)
+    local contributions_graph = Graph.new(contributions, year, chars)
 
     local graph_lines = contributions_graph:get_lines()
     local header_lines = M.create_header(year, username)

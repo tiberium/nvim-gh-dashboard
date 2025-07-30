@@ -84,6 +84,10 @@ require("nvim-gh-dashboard").setup({
 |--------|------|---------|-------------|
 | `username` | `string` | `"torvalds"` | GitHub username whose contributions to display |
 | `year` | `number` | Current year | Year to fetch contributions for |
+| `chars` | `table` | See below | Characters used to render the graph |
+| `chars.filled` | `string` | `"#"` | Character for days with contributions |
+| `chars.high` | `string` | `"@"` | Character for days with 100+ contributions |
+| `chars.empty` | `string` | `"."` | Character for days with no contributions |
 
 ### Examples
 
@@ -102,6 +106,16 @@ require("nvim-gh-dashboard").setup({
 -- View contributions for current year (uses torvalds as default)
 require("nvim-gh-dashboard").setup({
   year = 2024
+})
+
+-- Customize graph characters
+require("nvim-gh-dashboard").setup({
+  username = "octocat",
+  chars = {
+    filled = "+",  -- Days with contributions
+    high = "#",    -- Days with 100+ contributions  
+    empty = "."    -- Days with no contributions
+  }
 })
 ```
 
@@ -122,9 +136,11 @@ The plugin:
 
 ## Graph Legend
 
-- `X` - Days with contributions
-- `A` - Days with 100+ contributions  
-- ` ` (space) - Days with no contributions
+- `#` - Days with contributions
+- `@` - Days with 100+ contributions  
+- `.` - Days with no contributions
+
+*Note: Characters can be customized via the `chars` configuration option.*
 
 ## Troubleshooting
 

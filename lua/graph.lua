@@ -6,15 +6,18 @@ Graph.__index = Graph
 ---@field grid Contribution[][] contributions grouped by week day (1 - 7)
 ---@field year number year of the contributions
 ---@field height number height of the graph in lines
+---@field chars table characters configuration
 
 ---@param contributions Contribution[]
 ---@param year number
+---@param chars table Characters configuration
 ---@return Graph
-function Graph.new(contributions, year)
+function Graph.new(contributions, year, chars)
     local self = setmetatable({}, Graph)
 
     self.contributions = contributions or {}
     self.year = year or tonumber(os.date("%Y"))
+    self.chars = chars
 
     self.grid = {}
     for i = 1, 7 do
@@ -46,11 +49,11 @@ function Graph:get_lines()
         for _, contribution in ipairs(self.grid[i]) do
             if contribution then
                 if string.match(contribution.counter, "+$") ~= nil then
-                    day_line = day_line .. "A"
+                    day_line = day_line .. self.chars.high
                 elseif tonumber(contribution.counter) > 0 then
-                    day_line = day_line .. "X"
+                    day_line = day_line .. self.chars.filled
                 else
-                    day_line = day_line .. " "
+                    day_line = day_line .. self.chars.empty
                 end
             else
                 day_line = day_line .. " "
