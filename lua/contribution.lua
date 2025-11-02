@@ -29,7 +29,7 @@ function Contribution.new(metadata --[[@as ContributionMetadata]])
 
     -- validate unpacked values
     if not counter or not month or not day then
-        print("Invalid contribution format: " .. metadata.tooltip)
+        vim.notify("Failed to parse contribution metadata: " .. metadata.tooltip, vim.log.levels.ERROR)
         return nil
     end
 

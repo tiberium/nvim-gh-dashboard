@@ -30,7 +30,7 @@ function Graph.new(contributions, year, chars)
         end
     end
 
-    self.height = 7  -- 7 as there are 7 days in a week
+    self.height = 7 -- 7 as there are 7 days in a week
 
     return self
 end
@@ -40,7 +40,7 @@ function Graph:get_lines()
     local lines = {}
 
     if not self.contributions or #self.contributions < 1 then
-        print("nv-gh-dashboard: Error: No contributions fetched from GitHub")
+        vim.notify("No contributions fetched from GitHub", vim.log.levels.ERROR)
         return lines
     end
 

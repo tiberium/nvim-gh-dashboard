@@ -20,13 +20,15 @@ function M.setup(opts)
     local username = opts.username or "torvalds"
     local chars = opts.chars or { filled = "#", high = "@", empty = "." }
 
-    local contributions_metadata = GithubService.fetch_contributions(username, year, true)
-
     local activity_metadata = GithubService.fetch_activity(username, year, true)
-    print(activity_metadata.commits)
+    if not activity_metadata then
+        vim.notify("Failed to fetch activity from GitHub", vim.log.levels.ERROR)
+        return
+    end
 
+    local contributions_metadata = GithubService.fetch_contributions(username, year, true)
     if not contributions_metadata then
-        print("Failed to fetch contributions.")
+        vim.notify("Failed to fetch contributions from GitHub", vim.log.levels.ERROR)
         return
     end
 
