@@ -7,10 +7,10 @@ function M.with_modifiable_buffer(buf_id, callback)
     -- Temporarily make buffer modifiable
     vim.bo[buf_id].modifiable = true
     vim.bo[buf_id].readonly = false
-    
+
     -- Execute the callback
     callback()
-    
+
     -- Make buffer read-only again
     vim.bo[buf_id].modifiable = false
     vim.bo[buf_id].readonly = true

@@ -9,7 +9,7 @@ local buffer_helpers = require("buffer-helpers")
 ---@return string[]
 function M.create_header(year, username)
     local header_lines = {}
-    
+
     table.insert(header_lines, "┌──────────────────────────────────────────────────────────────┐")
     table.insert(header_lines, "│                      GitHub Contributions                    │")
     table.insert(header_lines, "└──────────────────────────────────────────────────────────────┘")
@@ -17,7 +17,7 @@ function M.create_header(year, username)
     table.insert(header_lines, "User: " .. username)
     table.insert(header_lines, "Year: " .. year)
     table.insert(header_lines, "")
-    
+
     return header_lines
 end
 
@@ -42,7 +42,7 @@ function M.create_dashboard(contributions, year, username, chars)
 
     local graph_lines = contributions_graph:get_lines()
     local header_lines = M.create_header(year, username)
-    
+
     -- Combine header and graph
     local dashboard_lines = {}
     for _, line in ipairs(header_lines) do
@@ -114,7 +114,7 @@ function M.update_contribution_details(buf_id, contributions_graph, total_height
         contributions_graph,
         total_height - contributions_graph.height
     )
-    
+
     local tooltip = ""
     if line then
         local selected_contribution = contributions_graph.grid[line][col]

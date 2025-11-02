@@ -14,12 +14,12 @@ local DashboardView = require("dashboard-view")
 ---@field opts.chars.empty string|nil Character for days with no contributions (default: ".")
 function M.setup(opts)
     opts = opts or {}
-    
+
     -- Set defaults
     local year = opts.year or tonumber(os.date("%Y"))
     local username = opts.username or "torvalds"
     local chars = opts.chars or { filled = "#", high = "@", empty = "." }
-    
+
     local contributions_metadata = GithubService.fetch_contributions(username, year)
 
     if not contributions_metadata then
