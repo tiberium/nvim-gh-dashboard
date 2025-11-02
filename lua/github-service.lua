@@ -132,16 +132,10 @@ function M.fetch_activity(username, year, use_cache)
         return nil
     end
 
-    vim.notify(string.format("Percentages: %s", percentages), vim.log.levels.INFO)
-
     local commits = percentages:match('&quot;Commits&quot;:(%d+)')
     local code_review = percentages:match('&quot;Code review&quot;:(%d+)')
     local pull_requests = percentages:match('&quot;Pull requests&quot;:(%d+)')
     local issues = percentages:match('&quot;Issues&quot;:(%d+)')
-
-    vim.notify(
-        string.format("Commits: %s, Code Review: %s, PRs: %s, Issues: %s", commits, code_review, pull_requests, issues),
-        vim.log.levels.INFO)
 
     if not commits or not code_review or not pull_requests or not issues then
         vim.notify("Failed to fetch activity data...", vim.log.levels.ERROR)
