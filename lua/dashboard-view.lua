@@ -1,6 +1,6 @@
 local M = {}
 
-local Graph = require("graph")
+local Graph = require("contributions-graph")
 local buffer_helpers = require("buffer-helpers")
 
 ---Creates header lines for the dashboard
