@@ -20,11 +20,6 @@ function M.setup(opts)
     local username = opts.username or "torvalds"
     local chars = opts.chars or { filled = "#", high = "@", empty = "." }
 
-    local activities = GithubService.fetch_activity(username, year, true)
-    if not activities then
-        vim.notify("Failed to fetch activity from GitHub", vim.log.levels.DEBUG)
-    end
-
     local contributions_metadata = GithubService.fetch_contributions(username, year, true)
     if not contributions_metadata then
         vim.notify("Failed to fetch contributions from GitHub", vim.log.levels.ERROR)
@@ -38,7 +33,13 @@ function M.setup(opts)
         table.insert(contributions, contribution)
     end
 
-    DashboardView.create_dashboard(contributions, activities, year, username, chars)
+    DashboardView.create_dashboard(
+        contributions,
+        GithubService.fetch_activity(username, year, true),
+        year,
+        username,
+        chars
+    )
 end
 
 return M

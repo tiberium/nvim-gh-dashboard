@@ -36,7 +36,6 @@ function ActivityGraph:get_lines()
     local lines = {}
 
     if not self.activities then
-        vim.notify("No activities fetched from GitHub", vim.log.levels.DEBUG)
         return lines
     end
 

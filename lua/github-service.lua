@@ -126,9 +126,7 @@ function M.fetch_activity(username, year, use_cache)
     local div_matcher = '<div[^>]-class="js%-activity%-overview%-graph%-container"[^>]-data%-percentages="([^"]+)"'
     local percentages = user_page:match(div_matcher)
 
-
     if not percentages then
-        vim.notify("Nie znaleziono atrybutu data-percentages!", vim.log.levels.ERROR)
         return nil
     end
 
