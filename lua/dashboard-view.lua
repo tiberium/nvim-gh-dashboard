@@ -1,6 +1,7 @@
 local M = {}
 
-local Graph = require("contributions-graph")
+local ContributionsGraph = require("contributions-graph")
+local ActivityGraph = require("activity-graph")
 local buffer_helpers = require("buffer-helpers")
 
 ---Creates header lines for the dashboard
@@ -23,10 +24,11 @@ end
 
 ---Creates the dashboard buffer and fills it with data
 ---@param contributions Contribution[]
+---@param activities ActivityMetadata|nil
 ---@param year number
 ---@param username string
 ---@param chars table Characters configuration
-function M.create_dashboard(contributions, year, username, chars)
+function M.create_dashboard(contributions, activities, year, username, chars)
     vim.cmd("enew")
     vim.bo.buftype = "nofile"
     vim.bo.bufhidden = "wipe"
@@ -38,38 +40,46 @@ function M.create_dashboard(contributions, year, username, chars)
     -- local width = vim.api.nvim_win_get_width(win_id)
 
     -- Create header and graph separately
-    local contributions_graph = Graph.new(contributions, year, chars)
+    local contributions_graph = ContributionsGraph.new(contributions, year, chars)
 
-    local graph_lines = contributions_graph:get_lines()
+    local contributions_graph_lines = contributions_graph:get_lines()
     local header_lines = M.create_header(year, username)
 
-    -- Combine header and graph
+    local activity_graph = ActivityGraph.new(activities, year, chars)
+    local activity_graph_lines = activity_graph:get_lines()
+
+    -- Combine header and graphs
     local dashboard_lines = {}
     for _, line in ipairs(header_lines) do
         table.insert(dashboard_lines, line)
     end
-    for _, line in ipairs(graph_lines) do
+    for _, line in ipairs(contributions_graph_lines) do
+        table.insert(dashboard_lines, line)
+    end
+    table.insert(dashboard_lines, "")
+    for _, line in ipairs(activity_graph_lines) do
         table.insert(dashboard_lines, line)
     end
 
     -- Add empty lines for cursor position info
     table.insert(dashboard_lines, "")
-    table.insert(dashboard_lines, "")
+    -- table.insert(dashboard_lines, "")
 
     vim.api.nvim_buf_set_lines(0, 0, -1, false, dashboard_lines)
     vim.bo.modifiable = false
     vim.bo.readonly = true
 
     -- Set up cursor position tracking (need to adjust height calculation)
-    local total_height = #header_lines + contributions_graph.height
-    M.setup_cursor_tracking(buf_id, contributions_graph, total_height)
+    local total_height = #header_lines + contributions_graph.height + activity_graph.height
+    M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height)
 end
 
 ---Sets up cursor position tracking for the dashboard buffer
 ---@param buf_id number
----@param contributions_graph Graph
+---@param contributions_graph ContributionsGraph
+---@param activity_graph ActivityGraph
 ---@param total_height number
-function M.setup_cursor_tracking(buf_id, contributions_graph, total_height)
+function M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height)
     -- Create autocommand group for this buffer
     local group = vim.api.nvim_create_augroup("GHDashboardCursor", { clear = false })
 
@@ -78,17 +88,16 @@ function M.setup_cursor_tracking(buf_id, contributions_graph, total_height)
         group = group,
         buffer = buf_id,
         callback = function()
-            M.update_contribution_details(buf_id, contributions_graph, total_height)
+            M.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height)
         end,
     })
 end
 
 ---Converts global cursor position to graph-local coordinates
----@param contributions_graph Graph
 ---@param header_height number
----@return number|nil line Graph-local line (1-7), nil if outside graph
----@return number col Graph-local column
-function M.get_graph_cursor_position(contributions_graph, header_height)
+---@return number|nil line ContributionsGraph-local line (1-7), nil if outside graph
+---@return number col ContriutionsGraph-local column
+function M.get_graph_cursor_position(header_height)
     local cursor = vim.api.nvim_win_get_cursor(0)
     local line_global = cursor[1]
     local col_global = cursor[2] + 1 -- Convert to 1-based indexing
@@ -107,12 +116,12 @@ end
 
 ---Updates the cursor position display in the buffer
 ---@param buf_id number
----@param contributions_graph Graph
+---@param contributions_graph ContributionsGraph
+---@param activity_graph ActivityGraph
 ---@param total_height number
-function M.update_contribution_details(buf_id, contributions_graph, total_height)
+function M.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height)
     local line, col = M.get_graph_cursor_position(
-        contributions_graph,
-        total_height - contributions_graph.height
+        total_height - contributions_graph.height - activity_graph.height
     )
 
     local tooltip = ""
@@ -123,7 +132,7 @@ function M.update_contribution_details(buf_id, contributions_graph, total_height
         end
     end
 
-    local position_line_idx = total_height + 1
+    local position_line_idx = total_height + 2
     buffer_helpers.update_line(buf_id, position_line_idx, tooltip)
 end
 

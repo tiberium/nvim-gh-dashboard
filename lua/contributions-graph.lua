@@ -1,7 +1,7 @@
-local Graph = {}
-Graph.__index = Graph
+local ContributionsGraph = {}
+ContributionsGraph.__index = ContributionsGraph
 
----@class Graph
+---@class ContributionsGraph
 ---@field contributions Contribution[] flat list of contributions from GitHub
 ---@field grid Contribution[][] contributions grouped by week day (1 - 7)
 ---@field year number year of the contributions
@@ -11,9 +11,9 @@ Graph.__index = Graph
 ---@param contributions Contribution[]
 ---@param year number
 ---@param chars table Characters configuration
----@return Graph
-function Graph.new(contributions, year, chars)
-    local self = setmetatable({}, Graph)
+---@return ContributionsGraph
+function ContributionsGraph.new(contributions, year, chars)
+    local self = setmetatable({}, ContributionsGraph)
 
     self.contributions = contributions or {}
     self.year = year or tonumber(os.date("%Y"))
@@ -36,7 +36,7 @@ function Graph.new(contributions, year, chars)
 end
 
 ---@return string[]
-function Graph:get_lines()
+function ContributionsGraph:get_lines()
     local lines = {}
 
     if not self.contributions or #self.contributions < 1 then
@@ -65,4 +65,4 @@ function Graph:get_lines()
     return lines
 end
 
-return Graph
+return ContributionsGraph
