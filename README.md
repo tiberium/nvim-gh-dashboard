@@ -1,15 +1,16 @@
 # nvim-gh-dashboard
 
-A Neovim plugin that displays GitHub contribution graphs directly in your editor. View your own or any GitHub user's contribution activity in a beautiful ASCII graph format.
+A Neovim plugin that displays GitHub contribution graphs directly in your editor. View your own or any GitHub user's contributions & activities in a beautiful ASCII graph format.
 
 > **⚠️ Note: This plugin is currently in alpha development stage.**  
 > The plugin is under active development and may undergo significant changes. Features, configuration options, and API may change frequently. Use at your own discretion and expect potential breaking changes in future updates.
 
-![GitHub Contributions Dashboard](screenshot.png)
+![GitHub Contributions & Activity Dashboards](screenshot.png)
 
 ## Features
 
-- 📊 **ASCII Contribution Graph** - Beautiful visualization of GitHub activity
+- 📊 **ASCII Contribution Graph** - Beautiful visualization of GitHub contributions 
+- 👤 **ASCII Activity Graph** - Beautiful summary visualization of GitHub activities
 - 🎯 **Interactive Cursor** - Move cursor to see contribution details for specific days
 - ⚙️ **Configurable** - Set custom username and year
 - 🚀 **Fast** - Fetches data directly from GitHub
@@ -132,6 +133,7 @@ The plugin:
 1. Fetches contribution data from GitHub's public pages
 2. Parses the HTML to extract contribution information
 3. Generates an ASCII representation of the contribution graph
+4. Generates an ASCII reporesentation of the activity graph, incase it is available
 4. Displays it in a special Neovim buffer with interactive cursor tracking
 
 ## Graph Legend
