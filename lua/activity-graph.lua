@@ -55,7 +55,6 @@ end
 
 ---@return string
 function ActivityGraph:renderBar(percentage, resolution)
-    vim.notify("Rendering bar for percentage: " .. percentage, vim.log.levels.INFO)
     local totalChars = 100 / resolution
     local filledChars = math.ceil(percentage / resolution)
     local emptyChars = totalChars - filledChars
