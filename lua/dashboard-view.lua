@@ -2,7 +2,15 @@ local M = {}
 
 local ContributionsGraph = require("contributions-graph")
 local ActivityGraph = require("activity-graph")
+local Contribution = require("contribution")
+local GithubService = require("github-service")
 local buffer_helpers = require("buffer-helpers")
+
+-- vim.uv is the new name (Neovim >= 0.10), vim.loop is kept for older versions
+local uv = vim.uv or vim.loop
+
+M.spinner_frames = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
+M.spinner_interval_ms = 80
 
 ---Creates header lines for the dashboard
 ---@param year number
@@ -22,22 +30,83 @@ function M.create_header(year, username)
     return header_lines
 end
 
----Creates the dashboard buffer and fills it with data
----@param contributions Contribution[]
----@param activities ActivityMetadata|nil
----@param year number
----@param username string
----@param chars table Characters configuration
-function M.create_dashboard(contributions, activities, year, username, chars)
+---Creates a scratch, read-only buffer meant to be used as the dashboard buffer
+---@return number buf_id
+function M.create_buffer()
     vim.cmd("enew")
     vim.bo.buftype = "nofile"
     vim.bo.bufhidden = "wipe"
     vim.bo.swapfile = false
 
-    -- local win_id = vim.api.nvim_get_current_win()
     local buf_id = vim.api.nvim_get_current_buf()
-    -- TODO Needed later
-    -- local width = vim.api.nvim_win_get_width(win_id)
+
+    vim.bo.modifiable = false
+    vim.bo.readonly = true
+
+    return buf_id
+end
+
+---Starts an animated Braille spinner on the given line of the buffer.
+---@param buf_id number
+---@param line_idx number 0-based line index to animate
+---@param message string|nil Message to show next to the spinner
+---@return uv.uv_timer_t timer Timer handle; call `M.stop_spinner(timer)` to stop it
+function M.start_spinner(buf_id, line_idx, message)
+    local frame_idx = 1
+    local timer = uv.new_timer()
+
+    timer:start(0, M.spinner_interval_ms, vim.schedule_wrap(function()
+        if not vim.api.nvim_buf_is_valid(buf_id) then
+            M.stop_spinner(timer)
+            return
+        end
+
+        local frame = M.spinner_frames[frame_idx]
+        buffer_helpers.update_line(buf_id, line_idx, frame .. " " .. (message or "Loading..."))
+
+        frame_idx = (frame_idx % #M.spinner_frames) + 1
+    end))
+
+    return timer
+end
+
+---Stops and closes a spinner timer created by `M.start_spinner`
+---@param timer uv.uv_timer_t|nil
+function M.stop_spinner(timer)
+    if timer and not timer:is_closing() then
+        timer:stop()
+        timer:close()
+    end
+end
+
+---Renders an error message into the dashboard buffer, replacing the spinner
+---@param buf_id number
+---@param message string
+function M.render_error(buf_id, message)
+    if not vim.api.nvim_buf_is_valid(buf_id) then
+        return
+    end
+
+    buffer_helpers.with_modifiable_buffer(buf_id, function()
+        vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, {
+            "Failed to load GitHub dashboard:",
+            "",
+            message,
+        })
+    end)
+end
+
+---Renders the header and graphs into an already-created dashboard buffer
+---@param buf_id number
+---@param contributions Contribution[]
+---@param activities ActivityMetadata|nil
+---@param year number
+---@param username string
+---@param chars table Characters configuration
+function M.render_dashboard(buf_id, contributions, activities, year, username, chars)
+    if not vim.api.nvim_buf_is_valid(buf_id) then
+        return
+    end
 
     -- Create header and graph separately
     local contributions_graph = ContributionsGraph.new(contributions, year, chars)
@@ -63,15 +132,53 @@ function M.create_dashboard(contributions, activities, year, username, chars)
 
     -- Add empty lines for cursor position info
     table.insert(dashboard_lines, "")
-    -- table.insert(dashboard_lines, "")
 
-    vim.api.nvim_buf_set_lines(0, 0, -1, false, dashboard_lines)
-    vim.bo.modifiable = false
-    vim.bo.readonly = true
+    buffer_helpers.with_modifiable_buffer(buf_id, function()
+        vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, dashboard_lines)
+    end)
 
     -- Set up cursor position tracking (need to adjust height calculation)
     local total_height = #header_lines + contributions_graph.height + activity_graph.height
     M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height)
+end
+
+---Opens the dashboard buffer immediately, showing an animated spinner while the
+---GitHub data is being fetched asynchronously, then replaces it with the
+---rendered graphs on success or an error message on failure.
+---@param username string GitHub username
+---@param year number Year to fetch contributions for
+---@param chars table Characters configuration
+---@return number buf_id
+function M.open_dashboard(username, year, chars)
+    local buf_id = M.create_buffer()
+
+    local header_lines = M.create_header(year, username)
+    buffer_helpers.with_modifiable_buffer(buf_id, function()
+        vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, header_lines)
+    end)
+
+    -- The header already ends with a blank line; use it to host the spinner
+    local spinner_line_idx = #header_lines - 1
+    local timer = M.start_spinner(buf_id, spinner_line_idx, "Loading GitHub dashboard...")
+
+    GithubService.fetch_dashboard_data(username, year, true, function(data)
+        M.stop_spinner(timer)
+
+        local contributions = {}
+        for _, contribution_metadata in ipairs(data.contributions) do
+            local contribution = Contribution.new(contribution_metadata)
+            if contribution then
+                table.insert(contributions, contribution)
+            end
+        end
+
+        M.render_dashboard(buf_id, contributions, data.activity, year, username, chars)
+    end, function(message)
+        M.stop_spinner(timer)
+        M.render_error(buf_id, message)
+    end)
+
+    return buf_id
 end
 
 ---Sets up cursor position tracking for the dashboard buffer
