@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  stylua:
+    name: Format check (stylua)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@a456f65efd59b2c28beb2c3a862711f78291551c
+      - uses: JohnnyMorganz/stylua-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          version: 2.5.2
+          args: --check lua tests plugin
+
+  luacheck:
+    name: Lint (luacheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leafo/gh-actions-lua@v10
+      - uses: leafo/gh-actions-luarocks@v4
+      - run: luarocks install luacheck
+      - run: luacheck lua tests plugin
+
+  tests:
+    name: Tests (plenary busted)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: stable
+      - name: Checkout plenary.nvim
+        uses: actions/checkout@v4
+        with:
+          repository: nvim-lua/plenary.nvim
+          path: plenary.nvim
+      - name: Run tests
+        env:
+          PLENARY_DIR: ${{ github.workspace }}/plenary.nvim
+        run: |
+          nvim --headless --noplugin -u tests/minimal_init.lua \
+            -c "PlenaryBustedDirectory tests/nvim-gh-dashboard { minimal_init = 'tests/minimal_init.lua' }"
