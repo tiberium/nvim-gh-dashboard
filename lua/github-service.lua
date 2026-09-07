@@ -1,53 +1,7 @@
 local M = {}
 
-local ContributionMetadata = {}
-ContributionMetadata.__index = ContributionMetadata
-
----@class ContributionMetadata
----@field day string
----@field week string
----@field tooltip string
-
----@param day string -- 0-6 (0 = Sunday, 1 = Monday, ..., 6 = Saturday) as GitHub codes; row number
----@param week string -- week number of the year (0 - 52); column number
----@param contribution_tooltip string -- format: `<couter | No> contribution|s on <month> <day>.`
-function ContributionMetadata.new(day, week, contribution_tooltip)
-    local self = setmetatable({}, ContributionMetadata)
-    self.day = day
-    self.week = week
-    self.tooltip = contribution_tooltip
-    return self
-end
-
--- Possibly we can commend that out
-M.ContributionMetadata = ContributionMetadata
-
-
-local ActivityMetadata = {}
-ActivityMetadata.__index = ActivityMetadata
-
----@class ActivityMetadata
----@field code_review number
----@field commits number
----@field pull_requests number
----@field issues number
-
----@param commits string
----@param code_review string
----@param pull_requests string
----@param issues string
-function ActivityMetadata.new(commits, code_review, pull_requests, issues)
-    local self = setmetatable({}, ActivityMetadata)
-
-    self.commits = commits
-    self.code_review = code_review
-    self.pull_requests = pull_requests
-    self.issues = issues
-
-    return self
-end
-
-M.ActivityMetadata = ActivityMetadata
+local ContributionMetadata = require("contribution-metadata")
+local ActivityMetadata = require("activity-metadata")
 
 ---@class DashboardData
 ---@field contributions ContributionMetadata[]
