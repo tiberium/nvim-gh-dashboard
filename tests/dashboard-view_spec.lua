@@ -1,5 +1,6 @@
 local GithubService = require("github-service")
 local DashboardView = require("dashboard-view")
+local ContributionMetadata = require("contribution-metadata")
 
 describe("dashboard-view", function()
     local default_chars = { filled = "#", high = "@", empty = "." }
@@ -65,7 +66,7 @@ describe("dashboard-view", function()
 
             local contributions = {}
             for day = 0, 6 do
-                local metadata = GithubService.ContributionMetadata.new(
+                local metadata = ContributionMetadata.new(
                     tostring(day), "0", "5 contributions on January 21."
                 )
                 table.insert(contributions, Contribution.new(metadata))
@@ -88,7 +89,7 @@ describe("dashboard-view", function()
             local metadata_list = {}
             for day = 0, 6 do
                 table.insert(metadata_list,
-                    GithubService.ContributionMetadata.new(tostring(day), "0", "5 contributions on January 21."))
+                    ContributionMetadata.new(tostring(day), "0", "5 contributions on January 21."))
             end
 
             GithubService.fetch_dashboard_data = function(_, _, _, on_success, _)

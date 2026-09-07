@@ -3,11 +3,6 @@ local M = {}
 local ContributionMetadata = require("contribution-metadata")
 local ActivityMetadata = require("activity-metadata")
 
--- Re-exported for backward compatibility so callers/tests can keep using
--- `GithubService.ContributionMetadata` / `GithubService.ActivityMetadata`.
-M.ContributionMetadata = ContributionMetadata
-M.ActivityMetadata = ActivityMetadata
-
 ---@class DashboardData
 ---@field contributions ContributionMetadata[]
 ---@field activity ActivityMetadata|nil
