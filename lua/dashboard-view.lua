@@ -5,12 +5,12 @@ local ActivityGraph = require("activity-graph")
 local Contribution = require("contribution")
 local GithubService = require("github-service")
 local buffer_helpers = require("buffer-helpers")
+local Spinner = require("spinner")
+local CursorTracking = require("cursor-tracking")
 
--- vim.uv is the new name (Neovim >= 0.10), vim.loop is kept for older versions
-local uv = vim.uv or vim.loop
-
-M.spinner_frames = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
-M.spinner_interval_ms = 80
+-- Re-exported for backward compatibility.
+M.spinner_frames = Spinner.spinner_frames
+M.spinner_interval_ms = Spinner.spinner_interval_ms
 
 ---Creates header lines for the dashboard
 ---@param year number
@@ -52,31 +52,13 @@ end
 ---@param message string|nil Message to show next to the spinner
 ---@return uv.uv_timer_t timer Timer handle; call `M.stop_spinner(timer)` to stop it
 function M.start_spinner(buf_id, line_idx, message)
-    local frame_idx = 1
-    local timer = uv.new_timer()
-
-    timer:start(0, M.spinner_interval_ms, vim.schedule_wrap(function()
-        if not vim.api.nvim_buf_is_valid(buf_id) then
-            M.stop_spinner(timer)
-            return
-        end
-
-        local frame = M.spinner_frames[frame_idx]
-        buffer_helpers.update_line(buf_id, line_idx, frame .. " " .. (message or "Loading..."))
-
-        frame_idx = (frame_idx % #M.spinner_frames) + 1
-    end))
-
-    return timer
+    return Spinner.start(buf_id, line_idx, message)
 end
 
 ---Stops and closes a spinner timer created by `M.start_spinner`
 ---@param timer uv.uv_timer_t|nil
 function M.stop_spinner(timer)
-    if timer and not timer:is_closing() then
-        timer:stop()
-        timer:close()
-    end
+    Spinner.stop(timer)
 end
 
 ---Renders an error message into the dashboard buffer, replacing the spinner
@@ -187,17 +169,7 @@ end
 ---@param activity_graph ActivityGraph
 ---@param total_height number
 function M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height)
-    -- Create autocommand group for this buffer
-    local group = vim.api.nvim_create_augroup("GHDashboardCursor", { clear = false })
-
-    -- Set up cursor moved autocommand
-    vim.api.nvim_create_autocmd({ "CursorMoved", "CursorMovedI" }, {
-        group = group,
-        buffer = buf_id,
-        callback = function()
-            M.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height)
-        end,
-    })
+    CursorTracking.setup(buf_id, contributions_graph, activity_graph, total_height)
 end
 
 ---Converts global cursor position to graph-local coordinates
@@ -205,20 +177,7 @@ end
 ---@return number|nil line ContributionsGraph-local line (1-7), nil if outside graph
 ---@return number col ContriutionsGraph-local column
 function M.get_graph_cursor_position(header_height)
-    local cursor = vim.api.nvim_win_get_cursor(0)
-    local line_global = cursor[1]
-    local col_global = cursor[2] + 1 -- Convert to 1-based indexing
-
-    -- Convert global cursor position to local buffer position
-    local line = line_global - header_height
-    local col = col_global
-
-    -- Check that cursor is in the graph
-    if (line < 1 or line > 7) then
-        return nil, col
-    end
-
-    return line, col
+    return CursorTracking.get_graph_cursor_position(header_height)
 end
 
 ---Updates the cursor position display in the buffer
@@ -227,20 +186,7 @@ end
 ---@param activity_graph ActivityGraph
 ---@param total_height number
 function M.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height)
-    local line, col = M.get_graph_cursor_position(
-        total_height - contributions_graph.height - activity_graph.height
-    )
-
-    local tooltip = ""
-    if line then
-        local selected_contribution = contributions_graph.grid[line][col]
-        if (selected_contribution) then
-            tooltip = selected_contribution.tooltip
-        end
-    end
-
-    local position_line_idx = total_height + 2
-    buffer_helpers.update_line(buf_id, position_line_idx, tooltip)
+    CursorTracking.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height)
 end
 
 return M
