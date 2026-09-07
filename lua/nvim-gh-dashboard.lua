@@ -1,7 +1,5 @@
 local M = {}
 
-local GithubService = require("github-service")
-local Contribution = require("contribution")
 local DashboardView = require("dashboard-view")
 
 ---Function to setup the plugin
@@ -20,26 +18,7 @@ function M.setup(opts)
     local username = opts.username or "torvalds"
     local chars = opts.chars or { filled = "#", high = "@", empty = "." }
 
-    local contributions_metadata = GithubService.fetch_contributions(username, year, true)
-    if not contributions_metadata then
-        vim.notify("Failed to fetch contributions from GitHub", vim.log.levels.ERROR)
-        return
-    end
-
-    local contributions = {}
-    for _, contribution_metadata in ipairs(contributions_metadata) do
-        local contribution = Contribution.new(contribution_metadata)
-
-        table.insert(contributions, contribution)
-    end
-
-    DashboardView.create_dashboard(
-        contributions,
-        GithubService.fetch_activity(username, year, true),
-        year,
-        username,
-        chars
-    )
+    DashboardView.open_dashboard(username, year, chars)
 end
 
 return M

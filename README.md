@@ -158,6 +158,18 @@ The plugin:
 **Network issues:**
 - The plugin requires internet connection to fetch GitHub data
 
+## Testing
+
+Tests are written with [plenary.nvim](https://github.com/nvim-lua/plenary.nvim)'s busted-style test harness. To run them:
+
+```sh
+PLENARY_PATH=/path/to/plenary.nvim \
+  nvim --headless --noplugin -u tests/minimal_init.lua \
+  -c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal_init.lua'}"
+```
+
+`PLENARY_PATH` can be omitted if `plenary.nvim` is already installed in one of the common plugin manager locations.
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
