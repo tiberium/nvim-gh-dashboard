@@ -13,8 +13,8 @@ jobs:
     name: Format check (stylua)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@a456f65efd59b2c28beb2c3a862711f78291551c
-      - uses: JohnnyMorganz/stylua-action@v4
+      - uses: actions/checkout@v7
+      - uses: JohnnyMorganz/stylua-action@a456f65efd59b2c28beb2c3a862711f78291551c
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: 2.5.2
