@@ -1,4 +1,4 @@
-local fixtures = require("tests.fixtures")
+local fixtures = require("tests.nvim-gh-dashboard.fixtures")
 
 describe("github-service", function()
 	local GithubService
