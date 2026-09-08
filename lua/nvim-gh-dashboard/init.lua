@@ -13,6 +13,13 @@ local DashboardView = require("nvim-gh-dashboard.dashboard-view")
 function M.setup(opts)
 	opts = opts or {}
 
+	vim.validate({
+		opts = { opts, "table" },
+		year = { opts.year, "number", true },
+		username = { opts.username, "string", true },
+		chars = { opts.chars, "table", true },
+	})
+
 	-- Set defaults
 	local year = opts.year or tonumber(os.date("%Y"))
 	local username = opts.username or "torvalds"

@@ -39,10 +39,10 @@ describe("github-service", function()
 			local activity = GithubService.parse_activity(html)
 
 			assert.is_not_nil(activity)
-			assert.equals("70", activity.commits)
-			assert.equals("10", activity.code_review)
-			assert.equals("15", activity.pull_requests)
-			assert.equals("5", activity.issues)
+			assert.equals(70, activity.commits)
+			assert.equals(10, activity.code_review)
+			assert.equals(15, activity.pull_requests)
+			assert.equals(5, activity.issues)
 		end)
 
 		it("returns nil when the activity container is missing", function()
@@ -62,7 +62,7 @@ describe("github-service", function()
 
 			assert.equals(3, #data.contributions)
 			assert.is_not_nil(data.activity)
-			assert.equals("70", data.activity.commits)
+			assert.equals(70, data.activity.commits)
 		end)
 	end)
 

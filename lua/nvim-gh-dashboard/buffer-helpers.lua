@@ -8,12 +8,16 @@ function M.with_modifiable_buffer(buf_id, callback)
 	vim.bo[buf_id].modifiable = true
 	vim.bo[buf_id].readonly = false
 
-	-- Execute the callback
-	callback()
+	-- Execute the callback, ensuring the buffer is restored even on error
+	local ok, err = pcall(callback)
 
 	-- Make buffer read-only again
 	vim.bo[buf_id].modifiable = false
 	vim.bo[buf_id].readonly = true
+
+	if not ok then
+		error(err, 0)
+	end
 end
 
 ---Updates a specific line in the buffer

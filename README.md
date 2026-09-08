@@ -87,7 +87,7 @@ require("nvim-gh-dashboard").setup({
 | `year` | `number` | Current year | Year to fetch contributions for |
 | `chars` | `table` | See below | Characters used to render the graph |
 | `chars.filled` | `string` | `"#"` | Character for days with contributions |
-| `chars.high` | `string` | `"@"` | Character for days with 100+ contributions |
+| `chars.high` | `string` | `"@"` | Character for days with the highest single-day contribution count, as flagged by GitHub |
 | `chars.empty` | `string` | `"."` | Character for days with no contributions |
 
 ### Examples
@@ -114,7 +114,7 @@ require("nvim-gh-dashboard").setup({
   username = "octocat",
   chars = {
     filled = "+",  -- Days with contributions
-    high = "#",    -- Days with 100+ contributions  
+    high = "#",    -- Highest single-day contribution count, as flagged by GitHub
     empty = "."    -- Days with no contributions
   }
 })
