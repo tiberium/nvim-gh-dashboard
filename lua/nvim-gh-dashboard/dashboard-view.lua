@@ -12,6 +12,9 @@ local CursorTracking = require("nvim-gh-dashboard.cursor-tracking")
 M.spinner_frames = Spinner.spinner_frames
 M.spinner_interval_ms = Spinner.spinner_interval_ms
 
+---Namespace used for all the highlights (colors) applied by this plugin.
+M.namespace = vim.api.nvim_create_namespace("nvim-gh-dashboard")
+
 ---Creates header lines for the dashboard
 ---@param year number
 ---@param username string
@@ -34,6 +37,85 @@ function M.create_header(year, username)
 	table.insert(header_lines, "")
 
 	return header_lines
+end
+
+---Computes the highlight spans for the header lines produced by
+---`M.create_header`, coloring the border, title, and labels/values
+---differently.
+---@param header_lines string[]
+---@return table[] highlights list of `{ line, col_start, col_end, hl_group }`
+---(0-based, end-exclusive)
+function M.get_header_highlights(header_lines)
+	local highlights = {}
+	local border_char = "│"
+	local border_len = #border_char
+
+	for line_idx, line in ipairs(header_lines) do
+		local line0 = line_idx - 1
+
+		if line:match("^[┌└]") then
+			table.insert(
+				highlights,
+				{ line = line0, col_start = 0, col_end = -1, hl_group = "GHDashboardHeaderBorder" }
+			)
+		elseif vim.startswith(line, border_char) then
+			table.insert(
+				highlights,
+				{ line = line0, col_start = 0, col_end = border_len, hl_group = "GHDashboardHeaderBorder" }
+			)
+			table.insert(highlights, {
+				line = line0,
+				col_start = border_len,
+				col_end = #line - border_len,
+				hl_group = "GHDashboardHeaderTitle",
+			})
+			table.insert(
+				highlights,
+				{ line = line0, col_start = #line - border_len, col_end = -1, hl_group = "GHDashboardHeaderBorder" }
+			)
+		elseif line:match("^%a+:%s") then
+			local _, label_end = line:find("^%a+:%s")
+			table.insert(
+				highlights,
+				{ line = line0, col_start = 0, col_end = label_end, hl_group = "GHDashboardHeaderLabel" }
+			)
+			table.insert(
+				highlights,
+				{ line = line0, col_start = label_end, col_end = -1, hl_group = "GHDashboardHeaderValue" }
+			)
+		end
+	end
+
+	return highlights
+end
+
+---Applies a list of `{ line, col_start, col_end, hl_group }` or
+---`{ line, col, hl_group }` highlight spans to the given buffer, offsetting
+---every `line` by `line_offset`. `col_end = -1` (or omitted `col_end` combined
+---with `col`) highlights to the end of the line.
+---@param buf_id number
+---@param highlights table[]
+---@param line_offset number|nil defaults to 0
+function M.apply_highlights(buf_id, highlights, line_offset)
+	if not vim.api.nvim_buf_is_valid(buf_id) then
+		return
+	end
+
+	line_offset = line_offset or 0
+
+	for _, highlight in ipairs(highlights) do
+		local col_start = highlight.col_start or highlight.col
+		local col_end = highlight.col_end or (col_start + 1)
+
+		vim.api.nvim_buf_add_highlight(
+			buf_id,
+			M.namespace,
+			highlight.hl_group,
+			highlight.line + line_offset,
+			col_start,
+			col_end
+		)
+	end
 end
 
 ---Creates a scratch, read-only buffer meant to be used as the dashboard buffer
@@ -125,6 +207,11 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 		vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, dashboard_lines)
 	end)
 
+	vim.api.nvim_buf_clear_namespace(buf_id, M.namespace, 0, -1)
+	M.apply_highlights(buf_id, M.get_header_highlights(header_lines))
+	M.apply_highlights(buf_id, contributions_graph:get_highlights(), #header_lines)
+	M.apply_highlights(buf_id, activity_graph:get_highlights(), #header_lines + contributions_graph.height + 1)
+
 	-- Set up cursor position tracking (need to adjust height calculation)
 	local total_height = #header_lines + contributions_graph.height + activity_graph.height
 	M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height)
@@ -144,6 +231,7 @@ function M.open_dashboard(username, year, chars)
 	buffer_helpers.with_modifiable_buffer(buf_id, function()
 		vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, header_lines)
 	end)
+	M.apply_highlights(buf_id, M.get_header_highlights(header_lines))
 
 	-- The header already ends with a blank line; use it to host the spinner
 	local spinner_line_idx = #header_lines - 1

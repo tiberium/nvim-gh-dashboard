@@ -14,7 +14,7 @@ A Neovim plugin that displays GitHub contribution graphs directly in your editor
 - 🎯 **Interactive Cursor** - Move cursor to see contribution details for specific days
 - ⚙️ **Configurable** - Set custom username and year
 - 🚀 **Fast** - Fetches data directly from GitHub
-- 🎨 **Clean UI** - Read-only buffer with clear header information
+- 🎨 **Colorful UI** - Read-only buffer, colored using your current colorscheme's palette, fully customizable
 
 ## Requirements
 
@@ -89,6 +89,58 @@ require("nvim-gh-dashboard").setup({
 | `chars.filled` | `string` | `"#"` | Character for days with contributions |
 | `chars.high` | `string` | `"@"` | Character for days with the highest single-day contribution count, as flagged by GitHub |
 | `chars.empty` | `string` | `"."` | Character for days with no contributions |
+| `colors` | `table` | See below | Highlight group overrides, keyed by group name (see [Colors](#colors)) |
+
+### Colors
+
+Just like on github.com, the contribution graph is rendered with multiple
+shades of "intensity" and the activity bars, their borders/brackets and the
+header use distinct colors from one another, so everything is easy to tell
+apart at a glance.
+
+Colors are **not** hard-coded: every highlight group used by the plugin is
+`link`-ed by default to a built-in Neovim highlight group (`String`, `Title`,
+`DiagnosticWarn`, ...), so the dashboard automatically re-uses whatever
+palette your current colorscheme already defines. No extra colorscheme or
+palette plugin is required.
+
+| Highlight group | Default link | Used for |
+|---|---|---|
+| `GHDashboardHeaderBorder` | `FloatBorder` | The `┌─┐`/`└─┘` box border around the header |
+| `GHDashboardHeaderTitle` | `Title` | The "GitHub Contributions" header title |
+| `GHDashboardHeaderLabel` | `Comment` | The `User:`/`Year:` labels |
+| `GHDashboardHeaderValue` | `Identifier` | The configured username/year values |
+| `GHDashboardEmpty` | `Comment` | Days with no contributions |
+| `GHDashboardLevel1` | `DiagnosticHint` | Days with 1-3 contributions |
+| `GHDashboardLevel2` | `DiagnosticInfo` | Days with 4-6 contributions |
+| `GHDashboardLevel3` | `DiagnosticOk` | Days with 7-9 contributions |
+| `GHDashboardLevel4` | `String` | Days with 10-99 contributions |
+| `GHDashboardHigh` | `DiagnosticWarn` (bold) | Days with **100+ contributions**, as flagged by GitHub - intentionally distinct from the green scale above so your best days stand out |
+| `GHDashboardActivityLabel` | `Identifier` | The activity type label (`commits`, `issues`, ...) |
+| `GHDashboardActivityBorder` | `NonText` | The `[`/`]` brackets around each activity bar |
+| `GHDashboardActivityBarFilled` | `Function` | The filled portion of an activity bar |
+| `GHDashboardActivityBarEmpty` | `Comment` | The empty portion of an activity bar |
+| `GHDashboardActivityPercent` | `Number` | The trailing percentage value |
+
+Every group can be overridden through `opts.colors`, using the same shape
+accepted by `vim.api.nvim_set_hl()` (e.g. `{ fg = "#rrggbb" }`, `{ link =
+"SomeOtherGroup" }`, `{ bold = true }`, ...). Overrides are merged on top of
+the defaults, so you only need to specify the fields you want to change:
+
+```lua
+require("nvim-gh-dashboard").setup({
+  colors = {
+    -- Use explicit colors instead of linking to the colorscheme
+    GHDashboardHigh = { fg = "#ff9e64", bold = true },
+    -- Link to a different highlight group
+    GHDashboardActivityBarFilled = { link = "DiagnosticOk" },
+  }
+})
+```
+
+You can also change the colors afterwards (e.g. when switching colorscheme)
+by calling `require("nvim-gh-dashboard.colors").setup({ ... })` directly and
+re-opening the dashboard.
 
 ### Examples
 
@@ -118,6 +170,15 @@ require("nvim-gh-dashboard").setup({
     empty = "."    -- Days with no contributions
   }
 })
+
+-- Customize colors, overriding only the highlight groups you care about
+require("nvim-gh-dashboard").setup({
+  username = "octocat",
+  colors = {
+    GHDashboardHigh = { fg = "#ff9e64", bold = true }, -- 100+ contributions
+    GHDashboardActivityBarFilled = { link = "DiagnosticOk" },
+  }
+})
 ```
 
 ## Usage
@@ -142,7 +203,8 @@ The plugin:
 - `@` - Days with 100+ contributions  
 - `.` - Days with no contributions
 
-*Note: Characters can be customized via the `chars` configuration option.*
+*Note: Characters can be customized via the `chars` configuration option. Colors are also applied per
+intensity level; see [Colors](#colors) for the full list of highlight groups and how to customize them.*
 
 ## Troubleshooting
 
