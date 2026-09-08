@@ -1,6 +1,6 @@
 local M = {}
 
-local DashboardView = require("dashboard-view")
+local DashboardView = require("nvim-gh-dashboard.dashboard-view")
 
 ---Function to setup the plugin
 ---@param opts table|nil Configuration options
@@ -8,7 +8,7 @@ local DashboardView = require("dashboard-view")
 ---@field opts.username string|nil GitHub username (defaults to "torvalds")
 ---@field opts.chars table|nil Characters used in the graph
 ---@field opts.chars.filled string|nil Character for days with contributions (default: "#")
----@field opts.chars.high string|nil Character for days with 10+ contributions (default: "@")
+---@field opts.chars.high string|nil Character for days with the highest single-day contribution count (default: "@")
 ---@field opts.chars.empty string|nil Character for days with no contributions (default: ".")
 function M.setup(opts)
 	opts = opts or {}

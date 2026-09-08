@@ -1,6 +1,6 @@
 local M = {}
 
-local buffer_helpers = require("buffer-helpers")
+local buffer_helpers = require("nvim-gh-dashboard.buffer-helpers")
 
 -- vim.uv is the new name (Neovim >= 0.10), vim.loop is kept for older versions
 local uv = vim.uv or vim.loop

@@ -1,4 +1,4 @@
-local fixtures = require("tests.fixtures")
+local fixtures = require("tests.nvim-gh-dashboard.fixtures")
 
 describe("github-service", function()
 	local GithubService
@@ -6,7 +6,7 @@ describe("github-service", function()
 	before_each(function()
 		package.loaded["github-service"] = nil
 		package.loaded["plenary.curl"] = nil
-		GithubService = require("github-service")
+		GithubService = require("nvim-gh-dashboard.github-service")
 	end)
 
 	describe("parse_contributions", function()

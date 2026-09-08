@@ -1,0 +1,71 @@
+*nvim-gh-dashboard.txt*     A GitHub contributions & activity dashboard for Neovim
+
+==============================================================================
+CONTENTS                                            *nvim-gh-dashboard-contents*
+
+    1. Introduction ............... |nvim-gh-dashboard-introduction|
+    2. Requirements ............... |nvim-gh-dashboard-requirements|
+    3. Setup ...................... |nvim-gh-dashboard-setup|
+    4. Commands ................... |nvim-gh-dashboard-commands|
+    5. Configuration .............. |nvim-gh-dashboard-configuration|
+
+==============================================================================
+1. Introduction                                *nvim-gh-dashboard-introduction*
+
+nvim-gh-dashboard displays a GitHub user's contribution graph and activity
+overview as ASCII graphs in a Neovim buffer.
+
+==============================================================================
+2. Requirements                                *nvim-gh-dashboard-requirements*
+
+- Neovim >= 0.7.0
+- plenary.nvim (https://github.com/nvim-lua/plenary.nvim)
+
+==============================================================================
+3. Setup                                              *nvim-gh-dashboard-setup*
+
+>lua
+    require("nvim-gh-dashboard").setup({
+        username = "octocat",
+        year = 2023,
+    })
+<
+
+`setup()` opens a new scratch buffer immediately, shows a loading spinner
+while data is fetched from GitHub asynchronously (the UI is never blocked),
+and replaces it with the rendered graphs once the request completes.
+
+==============================================================================
+4. Commands                                        *nvim-gh-dashboard-commands*
+
+                                                            *:GHDashboard*
+:GHDashboard [{username}] [{year}]
+    Opens the dashboard for {username} (defaults to the configured/default
+    username) and {year} (defaults to the current year).
+
+    Examples: >vim
+        :GHDashboard
+        :GHDashboard octocat
+        :GHDashboard octocat 2023
+<
+
+==============================================================================
+5. Configuration                              *nvim-gh-dashboard-configuration*
+
+`setup({opts})` accepts the following options:
+
+    username        (string)  GitHub username to display.
+                              Default: `"torvalds"`
+    year            (number)  Year to fetch contributions for.
+                              Default: current year
+    chars           (table)   Characters used to render the graphs.
+    chars.filled    (string)  Character for days with contributions.
+                              Default: `"#"`
+    chars.high      (string)  Character for the highest single-day
+                              contribution count, as flagged by GitHub.
+                              Default: `"@"`
+    chars.empty     (string)  Character for days with no contributions.
+                              Default: `"."`
+
+ vim:tw=78:ts=8:noet:ft=help:norl:
+

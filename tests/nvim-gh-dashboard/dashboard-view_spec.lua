@@ -1,6 +1,6 @@
-local GithubService = require("github-service")
-local DashboardView = require("dashboard-view")
-local ContributionMetadata = require("contribution-metadata")
+local GithubService = require("nvim-gh-dashboard.github-service")
+local DashboardView = require("nvim-gh-dashboard.dashboard-view")
+local ContributionMetadata = require("nvim-gh-dashboard.contribution-metadata")
 
 describe("dashboard-view", function()
 	local default_chars = { filled = "#", high = "@", empty = "." }
@@ -61,7 +61,7 @@ describe("dashboard-view", function()
 
 	describe("render_dashboard", function()
 		it("renders the header and graphs into the buffer", function()
-			local Contribution = require("contribution")
+			local Contribution = require("nvim-gh-dashboard.contribution")
 			local buf_id = vim.api.nvim_create_buf(false, true)
 
 			local contributions = {}
