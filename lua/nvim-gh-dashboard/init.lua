@@ -8,7 +8,7 @@ local DashboardView = require("nvim-gh-dashboard.dashboard-view")
 ---@field opts.username string|nil GitHub username (defaults to "torvalds")
 ---@field opts.chars table|nil Characters used in the graph
 ---@field opts.chars.filled string|nil Character for days with contributions (default: "#")
----@field opts.chars.high string|nil Character for days with the highest single-day contribution count, as flagged by GitHub itself (default: "@")
+---@field opts.chars.high string|nil Character for days with the highest single-day contribution count (default: "@")
 ---@field opts.chars.empty string|nil Character for days with no contributions (default: ".")
 function M.setup(opts)
 	opts = opts or {}
