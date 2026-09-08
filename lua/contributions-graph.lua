@@ -13,56 +13,56 @@ ContributionsGraph.__index = ContributionsGraph
 ---@param chars table Characters configuration
 ---@return ContributionsGraph
 function ContributionsGraph.new(contributions, year, chars)
-    local self = setmetatable({}, ContributionsGraph)
+	local self = setmetatable({}, ContributionsGraph)
 
-    self.contributions = contributions or {}
-    self.year = year or tonumber(os.date("%Y"))
-    self.chars = chars
+	self.contributions = contributions or {}
+	self.year = year or tonumber(os.date("%Y"))
+	self.chars = chars
 
-    self.grid = {}
-    for i = 1, 7 do
-        self.grid[i] = vim.tbl_filter(function(contribution)
-            return contribution.weekday_number == i - 1
-        end, self.contributions)
+	self.grid = {}
+	for i = 1, 7 do
+		self.grid[i] = vim.tbl_filter(function(contribution)
+			return contribution.weekday_number == i - 1
+		end, self.contributions)
 
-        if self.grid[i][1].week_number ~= 0 then
-            table.insert(self.grid[i], 1, false)
-        end
-    end
+		if self.grid[i][1].week_number ~= 0 then
+			table.insert(self.grid[i], 1, false)
+		end
+	end
 
-    self.height = 7 -- 7 as there are 7 days in a week
+	self.height = 7 -- 7 as there are 7 days in a week
 
-    return self
+	return self
 end
 
 ---@return string[]
 function ContributionsGraph:get_lines()
-    local lines = {}
+	local lines = {}
 
-    if not self.contributions or #self.contributions < 1 then
-        vim.notify("No contributions fetched from GitHub", vim.log.levels.ERROR)
-        return lines
-    end
+	if not self.contributions or #self.contributions < 1 then
+		vim.notify("No contributions fetched from GitHub", vim.log.levels.ERROR)
+		return lines
+	end
 
-    for i = 1, #self.grid do
-        local day_line = ""
-        for _, contribution in ipairs(self.grid[i]) do
-            if contribution then
-                if string.match(contribution.counter, "+$") ~= nil then
-                    day_line = day_line .. self.chars.high
-                elseif tonumber(contribution.counter) > 0 then
-                    day_line = day_line .. self.chars.filled
-                else
-                    day_line = day_line .. self.chars.empty
-                end
-            else
-                day_line = day_line .. " "
-            end
-        end
-        table.insert(lines, day_line)
-    end
+	for i = 1, #self.grid do
+		local day_line = ""
+		for _, contribution in ipairs(self.grid[i]) do
+			if contribution then
+				if string.match(contribution.counter, "+$") ~= nil then
+					day_line = day_line .. self.chars.high
+				elseif tonumber(contribution.counter) > 0 then
+					day_line = day_line .. self.chars.filled
+				else
+					day_line = day_line .. self.chars.empty
+				end
+			else
+				day_line = day_line .. " "
+			end
+		end
+		table.insert(lines, day_line)
+	end
 
-    return lines
+	return lines
 end
 
 return ContributionsGraph

@@ -11,33 +11,35 @@ Contribution.__index = Contribution
 
 ---@param metadata ContributionMetadata
 ---@return Contribution | nil
-function Contribution.new(metadata --[[@as ContributionMetadata]])
-    local self = setmetatable({}, Contribution)
-    if metadata == nil then
-        return nil
-    end
+function Contribution.new(
+	metadata --[[@as ContributionMetadata]]
+)
+	local self = setmetatable({}, Contribution)
+	if metadata == nil then
+		return nil
+	end
 
-    self.tooltip = metadata.tooltip
+	self.tooltip = metadata.tooltip
 
-    self.weekday_number = tonumber(metadata.day)
-    self.week_number = tonumber(metadata.week)
+	self.weekday_number = tonumber(metadata.day)
+	self.week_number = tonumber(metadata.week)
 
-    -- unpack contribution
-    local pattern = "(%d+[%+]?) contribution[s]? on (%a+) (%w+)%."
-    local contribution_raw_fixed = self.tooltip:gsub("^No%s", "0 ")
-    local counter, month, day = contribution_raw_fixed:match(pattern)
+	-- unpack contribution
+	local pattern = "(%d+[%+]?) contribution[s]? on (%a+) (%w+)%."
+	local contribution_raw_fixed = self.tooltip:gsub("^No%s", "0 ")
+	local counter, month, day = contribution_raw_fixed:match(pattern)
 
-    -- validate unpacked values
-    if not counter or not month or not day then
-        vim.notify("Failed to parse contribution metadata: " .. metadata.tooltip, vim.log.levels.ERROR)
-        return nil
-    end
+	-- validate unpacked values
+	if not counter or not month or not day then
+		vim.notify("Failed to parse contribution metadata: " .. metadata.tooltip, vim.log.levels.ERROR)
+		return nil
+	end
 
-    self.counter = counter
-    self.month = month
-    self.day = day
+	self.counter = counter
+	self.month = month
+	self.day = day
 
-    return self
+	return self
 end
 
 return Contribution

@@ -17,17 +17,17 @@ package.path = repo_root .. "/?.lua;" .. repo_root .. "/?/init.lua;" .. package.
 -- the test harness (plenary.busted). Look it up via PLENARY_PATH, falling back
 -- to a handful of common install locations used by plugin managers.
 local candidates = {
-    os.getenv("PLENARY_PATH"),
-    repo_root .. "/.tests/plenary.nvim",
-    vim.fn.stdpath("data") .. "/lazy/plenary.nvim",
-    vim.fn.stdpath("data") .. "/site/pack/packer/start/plenary.nvim",
+	os.getenv("PLENARY_PATH"),
+	repo_root .. "/.tests/plenary.nvim",
+	vim.fn.stdpath("data") .. "/lazy/plenary.nvim",
+	vim.fn.stdpath("data") .. "/site/pack/packer/start/plenary.nvim",
 }
 
 for _, path in ipairs(candidates) do
-    if path and vim.fn.isdirectory(path) == 1 then
-        vim.opt.rtp:append(path)
-        break
-    end
+	if path and vim.fn.isdirectory(path) == 1 then
+		vim.opt.rtp:append(path)
+		break
+	end
 end
 
 vim.cmd("runtime plugin/plenary.vim")

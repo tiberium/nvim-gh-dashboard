@@ -12,54 +12,54 @@ ActivityGraph.__index = ActivityGraph
 ---@param chars table Characters configuration
 ---@return ActivityGraph
 function ActivityGraph.new(activities, year, chars)
-    local self = setmetatable({}, ActivityGraph)
+	local self = setmetatable({}, ActivityGraph)
 
-    self.activities = activities
+	self.activities = activities
 
-    self.height = 0
+	self.height = 0
 
-    if self.activities then
-        self.height = 4 -- 4 as there are 4 activity directions in GitHub, and we want to render the graph in 4 lines
-    end
+	if self.activities then
+		self.height = 4 -- 4 as there are 4 activity directions in GitHub, and we want to render the graph in 4 lines
+	end
 
-    self.year = year or tonumber(os.date("%Y"))
-    self.chars = chars
+	self.year = year or tonumber(os.date("%Y"))
+	self.chars = chars
 
-    self.charFilled = self.chars.filled or "#"
-    self.charEmpty = self.chars.empty or "."
+	self.charFilled = self.chars.filled or "#"
+	self.charEmpty = self.chars.empty or "."
 
-    return self
+	return self
 end
 
 ---@return string[]
 function ActivityGraph:get_lines()
-    local lines = {}
+	local lines = {}
 
-    if not self.activities then
-        return lines
-    end
+	if not self.activities then
+		return lines
+	end
 
-    -- This is the "resolution" of the graph. 5 means that 100% will be represented in 20 characters (100 / 5 = 20), as a
-    local resolution = 5
+	-- This is the "resolution" of the graph. 5 means that 100% will be represented in 20 characters (100 / 5 = 20), as a
+	local resolution = 5
 
-    for _, activityType in ipairs({ "code_review", "commits", "pull_requests", "issues" }) do
-        local percentage = self.activities[activityType]
-        local bar = self:renderBar(percentage, resolution)
-        local line = string.format("%-15s %s %3d%%", activityType, bar, percentage)
-        table.insert(lines, line)
-    end
+	for _, activityType in ipairs({ "code_review", "commits", "pull_requests", "issues" }) do
+		local percentage = self.activities[activityType]
+		local bar = self:renderBar(percentage, resolution)
+		local line = string.format("%-15s %s %3d%%", activityType, bar, percentage)
+		table.insert(lines, line)
+	end
 
-    return lines
+	return lines
 end
 
 ---@return string
 function ActivityGraph:renderBar(percentage, resolution)
-    local totalChars = 100 / resolution
-    local filledChars = math.ceil(percentage / resolution)
-    local emptyChars = totalChars - filledChars
+	local totalChars = 100 / resolution
+	local filledChars = math.ceil(percentage / resolution)
+	local emptyChars = totalChars - filledChars
 
-    local bar = "[" .. string.rep(self.charFilled, filledChars) .. string.rep(self.charEmpty, emptyChars) .. "]"
-    return bar
+	local bar = "[" .. string.rep(self.charFilled, filledChars) .. string.rep(self.charEmpty, emptyChars) .. "]"
+	return bar
 end
 
 return ActivityGraph

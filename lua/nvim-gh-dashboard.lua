@@ -11,14 +11,14 @@ local DashboardView = require("dashboard-view")
 ---@field opts.chars.high string|nil Character for days with 10+ contributions (default: "@")
 ---@field opts.chars.empty string|nil Character for days with no contributions (default: ".")
 function M.setup(opts)
-    opts = opts or {}
+	opts = opts or {}
 
-    -- Set defaults
-    local year = opts.year or tonumber(os.date("%Y"))
-    local username = opts.username or "torvalds"
-    local chars = opts.chars or { filled = "#", high = "@", empty = "." }
+	-- Set defaults
+	local year = opts.year or tonumber(os.date("%Y"))
+	local username = opts.username or "torvalds"
+	local chars = opts.chars or { filled = "#", high = "@", empty = "." }
 
-    DashboardView.open_dashboard(username, year, chars)
+	DashboardView.open_dashboard(username, year, chars)
 end
 
 return M
