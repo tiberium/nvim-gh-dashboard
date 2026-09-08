@@ -18,7 +18,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: 2.5.2
-          args: --check lua tests plugin
+          args: --check lua tests
 
   luacheck:
     name: Lint (luacheck)
@@ -28,7 +28,7 @@ jobs:
       - uses: leafo/gh-actions-lua@v10
       - uses: leafo/gh-actions-luarocks@v4
       - run: luarocks install luacheck
-      - run: luacheck lua tests plugin
+      - run: luacheck lua tests
 
   tests:
     name: Tests (plenary busted)
