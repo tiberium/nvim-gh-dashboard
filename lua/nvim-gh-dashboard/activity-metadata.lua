@@ -14,10 +14,10 @@ ActivityMetadata.__index = ActivityMetadata
 function ActivityMetadata.new(commits, code_review, pull_requests, issues)
 	local self = setmetatable({}, ActivityMetadata)
 
-	self.commits = commits
-	self.code_review = code_review
-	self.pull_requests = pull_requests
-	self.issues = issues
+	self.commits = tonumber(commits)
+	self.code_review = tonumber(code_review)
+	self.pull_requests = tonumber(pull_requests)
+	self.issues = tonumber(issues)
 
 	return self
 end
