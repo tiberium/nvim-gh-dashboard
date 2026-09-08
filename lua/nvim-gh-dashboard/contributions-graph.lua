@@ -25,7 +25,7 @@ function ContributionsGraph.new(contributions, year, chars)
 			return contribution.weekday_number == i - 1
 		end, self.contributions)
 
-		if self.grid[i][1].week_number ~= 0 then
+		if self.grid[i][1] and self.grid[i][1].week_number ~= 0 then
 			table.insert(self.grid[i], 1, false)
 		end
 	end
