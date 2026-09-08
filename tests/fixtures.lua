@@ -15,7 +15,10 @@ function M.page(entries, opts)
 	if opts.with_activity ~= false then
 		table.insert(
 			parts,
-			'<div class="js-activity-overview-graph-container" data-percentages="{&quot;Commits&quot;:70,&quot;Code review&quot;:10,&quot;Pull requests&quot;:15,&quot;Issues&quot;:5}"></div>'
+			'<div class="js-activity-overview-graph-container"'
+				.. "data-percentages="
+				.. '"{&quot;Commits&quot;:70,&quot;Code review&quot;:10,&quot;Pull requests&quot;:15,&quot;Issues&quot;:5}"'
+				.. "></div>"
 		)
 	end
 
