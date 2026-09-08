@@ -1,7 +1,7 @@
 local M = {}
 
-local ContributionMetadata = require("contribution-metadata")
-local ActivityMetadata = require("activity-metadata")
+local ContributionMetadata = require("nvim-gh-dashboard.contribution-metadata")
+local ActivityMetadata = require("nvim-gh-dashboard.activity-metadata")
 
 ---@class DashboardData
 ---@field contributions ContributionMetadata[]

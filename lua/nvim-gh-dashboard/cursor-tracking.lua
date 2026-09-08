@@ -1,6 +1,6 @@
 local M = {}
 
-local buffer_helpers = require("buffer-helpers")
+local buffer_helpers = require("nvim-gh-dashboard.buffer-helpers")
 
 ---Sets up cursor position tracking for the dashboard buffer
 ---@param buf_id number

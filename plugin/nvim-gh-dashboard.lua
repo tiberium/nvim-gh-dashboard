@@ -1,24 +1,32 @@
-local M = {}
-
-local DashboardView = require("dashboard-view")
-
----Function to setup the plugin
----@param opts table|nil Configuration options
----@field opts.year number|nil Year to fetch contributions for (defaults to current year)
----@field opts.username string|nil GitHub username (defaults to "torvalds")
----@field opts.chars table|nil Characters used in the graph
----@field opts.chars.filled string|nil Character for days with contributions (default: "#")
----@field opts.chars.high string|nil Character for days with 10+ contributions (default: "@")
----@field opts.chars.empty string|nil Character for days with no contributions (default: ".")
-function M.setup(opts)
-	opts = opts or {}
-
-	-- Set defaults
-	local year = opts.year or tonumber(os.date("%Y"))
-	local username = opts.username or "torvalds"
-	local chars = opts.chars or { filled = "#", high = "@", empty = "." }
-
-	DashboardView.open_dashboard(username, year, chars)
+if vim.g.loaded_nvim_gh_dashboard then
+    return
 end
+vim.g.loaded_nvim_gh_dashboard = true
 
-return M
+---Creates the :GHDashboard user command.
+---Usage:
+---  :GHDashboard                    -- uses configured/default username and current year
+---  :GHDashboard octocat            -- shows octocat's contributions for the current year
+---  :GHDashboard octocat 2023       -- shows octocat's contributions for 2023
+vim.api.nvim_create_user_command("GHDashboard", function(cmd_opts)
+    local args = cmd_opts.fargs
+    local setup_opts = {}
+
+    if args[1] then
+        setup_opts.username = args[1]
+    end
+
+    if args[2] then
+        local year = tonumber(args[2])
+        if not year then
+            vim.notify("nvim-gh-dashboard: 'year' argument must be a number", vim.log.levels.ERROR)
+            return
+        end
+        setup_opts.year = year
+    end
+
+    require("nvim-gh-dashboard").setup(setup_opts)
+end, {
+    nargs = "*",
+    desc = "Open the GitHub contributions dashboard",
+})
