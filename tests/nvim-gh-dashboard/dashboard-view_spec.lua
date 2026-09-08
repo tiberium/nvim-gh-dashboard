@@ -1,6 +1,6 @@
 local GithubService = require("nvim-gh-dashboard.github-service")
 local DashboardView = require("nvim-gh-dashboard.dashboard-view")
-local ContributionMetadata = require("nvim-gh-dashoard.contribution-metadata")
+local ContributionMetadata = require("nvim-gh-dashboard.contribution-metadata")
 
 describe("dashboard-view", function()
 	local default_chars = { filled = "#", high = "@", empty = "." }
