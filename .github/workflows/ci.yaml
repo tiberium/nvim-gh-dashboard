@@ -19,7 +19,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           version: 2.5.2
-          args: --check lua tests
+          args: --check lua tests plugin
 
   luacheck:
     name: Lint (luacheck)
@@ -33,7 +33,7 @@ jobs:
 
       - run: luarocks install luacheck
 
-      - run: luacheck lua tests
+      - run: luacheck lua tests plugin
 
   tests:
     name: Tests (plenary busted)
