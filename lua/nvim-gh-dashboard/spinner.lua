@@ -12,10 +12,12 @@ M.spinner_interval_ms = 80
 ---@param buf_id number
 ---@param line_idx number 0-based line index to animate
 ---@param message string|nil Message to show next to the spinner
+---@param col_offset number|nil Leading spaces to prepend to each frame, defaults to 0
 ---@return uv.uv_timer_t timer Timer handle; call `M.stop(timer)` to stop it
-function M.start(buf_id, line_idx, message)
+function M.start(buf_id, line_idx, message, col_offset)
 	local frame_idx = 1
 	local timer = uv.new_timer()
+	local prefix = string.rep(" ", col_offset or 0)
 
 	timer:start(
 		0,
@@ -27,7 +29,7 @@ function M.start(buf_id, line_idx, message)
 			end
 
 			local frame = M.spinner_frames[frame_idx]
-			buffer_helpers.update_line(buf_id, line_idx, frame .. " " .. (message or "Loading..."))
+			buffer_helpers.update_line(buf_id, line_idx, prefix .. frame .. " " .. (message or "Loading..."))
 
 			frame_idx = (frame_idx % #M.spinner_frames) + 1
 		end)

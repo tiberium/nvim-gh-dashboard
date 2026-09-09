@@ -15,6 +15,68 @@ M.spinner_interval_ms = Spinner.spinner_interval_ms
 ---Namespace used for all the highlights (colors) applied by this plugin.
 M.namespace = vim.api.nvim_create_namespace("nvim-gh-dashboard")
 
+-- Centering helpers shared by `render_dashboard` (header + graphs) and
+-- `open_dashboard` (header-only, while the spinner is showing), so that the
+-- dashboard is centered on screen right away instead of appearing in the
+-- top-left corner for a moment while data is being fetched.
+
+---@param win_width number
+---@param width number
+---@return number
+local function pad_for_width(win_width, width)
+	return math.max(0, math.floor((win_width - width) / 2))
+end
+
+---Computes the horizontal padding needed to center a single line, using
+---display width (not byte length) since lines may contain multi-byte UTF-8
+---box-drawing characters. Blank lines get no padding: prepending spaces to
+---an otherwise empty line only adds invisible trailing whitespace (which
+---some 'listchars' configurations render as visible characters), with no
+---centering benefit since there is no visible content to center.
+---@param win_width number
+---@param line string
+---@return number
+local function pad_for_line(win_width, line)
+	if line == "" then
+		return 0
+	end
+	return pad_for_width(win_width, vim.fn.strdisplaywidth(line))
+end
+
+---@param lines string[]
+---@return number
+local function max_width(lines)
+	local width = 0
+	for _, line in ipairs(lines) do
+		width = math.max(width, vim.fn.strdisplaywidth(line))
+	end
+	return width
+end
+
+---@param win_height number
+---@param content_height number
+---@return number
+local function vertical_pad_for(win_height, content_height)
+	return math.max(0, math.floor((win_height - content_height) / 2))
+end
+
+---Prepends the given per-line paddings to each line (skipping blanks, see
+---`pad_for_line`).
+---@param lines string[]
+---@param pads number[]
+---@return string[]
+local function apply_horizontal_padding(lines, pads)
+	local padded = {}
+	for i, line in ipairs(lines) do
+		if line == "" then
+			table.insert(padded, "")
+		else
+			table.insert(padded, string.rep(" ", pads[i] or 0) .. line)
+		end
+	end
+	return padded
+end
+
 ---Creates header lines for the dashboard
 ---@param year number
 ---@param username string
@@ -157,9 +219,10 @@ end
 ---@param buf_id number
 ---@param line_idx number 0-based line index to animate
 ---@param message string|nil Message to show next to the spinner
+---@param col_offset number|nil Leading spaces to prepend to each frame, defaults to 0
 ---@return uv.uv_timer_t timer Timer handle; call `M.stop_spinner(timer)` to stop it
-function M.start_spinner(buf_id, line_idx, message)
-	return Spinner.start(buf_id, line_idx, message)
+function M.start_spinner(buf_id, line_idx, message, col_offset)
+	return Spinner.start(buf_id, line_idx, message, col_offset)
 end
 
 ---Stops and closes a spinner timer created by `M.start_spinner`
@@ -229,48 +292,21 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	-- left-aligned to the frame's left edge instead of centered on screen.
 	-- The two graphs are centered as a block (same padding for every row)
 	-- so their internal grid/bar columns stay aligned with each other.
-	-- Use display width (not byte length) since border lines contain
-	-- multi-byte UTF-8 box-drawing characters.
 	local win_width = vim.api.nvim_win_get_width(0)
 	local win_height = vim.api.nvim_win_get_height(0)
 
-	---@param width number
-	---@return number
-	local function pad_for_width(width)
-		return math.max(0, math.floor((win_width - width) / 2))
-	end
-
-	---@param line string
-	---@return number
-	local function pad_for(line)
-		if line == "" then
-			return 0
-		end
-		return pad_for_width(vim.fn.strdisplaywidth(line))
-	end
-
-	---@param lines string[]
-	---@return number
-	local function max_width(lines)
-		local width = 0
-		for _, line in ipairs(lines) do
-			width = math.max(width, vim.fn.strdisplaywidth(line))
-		end
-		return width
-	end
-
 	local header_pads = {}
 	for i, line in ipairs(header_lines) do
-		header_pads[i] = pad_for(line)
+		header_pads[i] = pad_for_line(win_width, line)
 	end
 
-	local contributions_pad = pad_for_width(max_width(contributions_graph_lines))
+	local contributions_pad = pad_for_width(win_width, max_width(contributions_graph_lines))
 	local contributions_pads = {}
 	for i = 1, #contributions_graph_lines do
 		contributions_pads[i] = contributions_pad
 	end
 
-	local activity_pad = pad_for_width(max_width(activity_graph_lines))
+	local activity_pad = pad_for_width(win_width, max_width(activity_graph_lines))
 	local activity_pads = {}
 	for i = 1, #activity_graph_lines do
 		activity_pads[i] = activity_pad
@@ -289,22 +325,14 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	end
 	dashboard_pads[#dashboard_lines] = 0 -- trailing blank line for cursor position info
 
-	local vertical_pad = math.max(0, math.floor((win_height - #dashboard_lines) / 2))
+	local vertical_pad = vertical_pad_for(win_height, #dashboard_lines)
 
 	local centered_lines = {}
 	for _ = 1, vertical_pad do
 		table.insert(centered_lines, "")
 	end
-	for i, line in ipairs(dashboard_lines) do
-		-- Avoid padding blank/gap lines: prepending spaces to an otherwise
-		-- empty line only adds invisible trailing whitespace (which some
-		-- 'listchars' configurations render as visible characters), with no
-		-- centering benefit since there is no visible content to center.
-		if line == "" then
-			table.insert(centered_lines, "")
-		else
-			table.insert(centered_lines, string.rep(" ", dashboard_pads[i]) .. line)
-		end
+	for _, line in ipairs(apply_horizontal_padding(dashboard_lines, dashboard_pads)) do
+		table.insert(centered_lines, line)
 	end
 
 	buffer_helpers.with_modifiable_buffer(buf_id, function()
@@ -342,14 +370,39 @@ function M.open_dashboard(username, year, chars)
 	local buf_id = M.create_buffer()
 
 	local header_lines = M.create_header(year, username)
+
+	-- Center the header on screen immediately, the same way `render_dashboard`
+	-- centers the final content, so the dashboard doesn't briefly appear in
+	-- the top-left corner while data is still being fetched.
+	local win_width = vim.api.nvim_win_get_width(0)
+	local win_height = vim.api.nvim_win_get_height(0)
+
+	local header_pads = {}
+	for i, line in ipairs(header_lines) do
+		header_pads[i] = pad_for_line(win_width, line)
+	end
+
+	local vertical_pad = vertical_pad_for(win_height, #header_lines)
+
+	local centered_lines = {}
+	for _ = 1, vertical_pad do
+		table.insert(centered_lines, "")
+	end
+	for _, line in ipairs(apply_horizontal_padding(header_lines, header_pads)) do
+		table.insert(centered_lines, line)
+	end
+
 	buffer_helpers.with_modifiable_buffer(buf_id, function()
-		vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, header_lines)
+		vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, centered_lines)
 	end)
-	M.apply_highlights(buf_id, M.get_header_highlights(header_lines))
+	M.apply_highlights(buf_id, M.get_header_highlights(header_lines), vertical_pad, header_pads)
 
 	-- The header already ends with a blank line; use it to host the spinner
-	local spinner_line_idx = #header_lines - 1
-	local timer = M.start_spinner(buf_id, spinner_line_idx, "Loading GitHub dashboard...")
+	local spinner_line_idx = vertical_pad + #header_lines - 1
+	local spinner_message = "Loading GitHub dashboard..."
+	local spinner_col_offset =
+		pad_for_width(win_width, vim.fn.strdisplaywidth(Spinner.spinner_frames[1] .. " " .. spinner_message))
+	local timer = M.start_spinner(buf_id, spinner_line_idx, spinner_message, spinner_col_offset)
 
 	GithubService.fetch_dashboard_data(username, year, true, function(data)
 		M.stop_spinner(timer)
