@@ -210,9 +210,11 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 
 	-- Center the dashboard within the current window, both horizontally and
 	-- vertically, by padding it with leading spaces/blank lines.
+	-- Use display width (not byte length) since border lines contain
+	-- multi-byte UTF-8 box-drawing characters.
 	local content_width = 0
 	for _, line in ipairs(dashboard_lines) do
-		content_width = math.max(content_width, #line)
+		content_width = math.max(content_width, vim.fn.strdisplaywidth(line))
 	end
 
 	local win_width = vim.api.nvim_win_get_width(0)
