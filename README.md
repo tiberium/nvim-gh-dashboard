@@ -5,7 +5,7 @@ A Neovim plugin that displays GitHub contribution graphs directly in your editor
 > **⚠️ Note: This plugin is currently in alpha development stage.**  
 > The plugin is under active development and may undergo significant changes. Features, configuration options, and API may change frequently. Use at your own discretion and expect potential breaking changes in future updates.
 
-![GitHub Contributions & Activity Dashboards](screenshot.png)
+![GitHub Contributions & Activity Dashboards - Gruvbox](gruvbox.png)
 
 ## Features
 
@@ -141,6 +141,14 @@ require("nvim-gh-dashboard").setup({
 You can also change the colors afterwards (e.g. when switching colorscheme)
 by calling `require("nvim-gh-dashboard.colors").setup({ ... })` directly and
 re-opening the dashboard.
+
+Examples with custom colors inherited from system color scheme on [Omarchy](https://omarchy.org/):
+
+![Gruvbox](gruvbox.png)
+
+![Hackerman](hackerman.png)
+
+![Catppuccin Latte](catppuccin_latte.png)
 
 ### Examples
 
