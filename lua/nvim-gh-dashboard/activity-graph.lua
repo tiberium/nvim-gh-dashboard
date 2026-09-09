@@ -62,4 +62,70 @@ function ActivityGraph:renderBar(percentage, resolution)
 	return bar
 end
 
+---Returns per-character highlight spans for the rendered graph lines,
+---distinguishing the activity label, the bar's border/brackets, its filled
+---and empty portions, and the trailing percentage, so each element can use a
+---different color.
+---@return table[] highlights list of `{ line, col_start, col_end, hl_group }`
+---(0-based, end-exclusive, matching the lines returned by `get_lines`)
+function ActivityGraph:get_highlights()
+	local highlights = {}
+
+	if not self.activities then
+		return highlights
+	end
+
+	local resolution = 5
+	local totalChars = 100 / resolution
+	local label_width = 15
+
+	for line_idx, activityType in ipairs({ "code_review", "commits", "pull_requests", "issues" }) do
+		local percentage = self.activities[activityType]
+		local filledChars = math.ceil(percentage / resolution)
+		local emptyChars = totalChars - filledChars
+
+		local line = line_idx - 1
+		local col = 0
+
+		table.insert(
+			highlights,
+			{ line = line, col_start = col, col_end = label_width, hl_group = "GHDashboardActivityLabel" }
+		)
+		col = label_width + 1 -- skip the space between label and bar
+
+		-- opening bracket
+		table.insert(
+			highlights,
+			{ line = line, col_start = col, col_end = col + 1, hl_group = "GHDashboardActivityBorder" }
+		)
+		col = col + 1
+
+		table.insert(
+			highlights,
+			{ line = line, col_start = col, col_end = col + filledChars, hl_group = "GHDashboardActivityBarFilled" }
+		)
+		col = col + filledChars
+
+		table.insert(
+			highlights,
+			{ line = line, col_start = col, col_end = col + emptyChars, hl_group = "GHDashboardActivityBarEmpty" }
+		)
+		col = col + emptyChars
+
+		-- closing bracket
+		table.insert(
+			highlights,
+			{ line = line, col_start = col, col_end = col + 1, hl_group = "GHDashboardActivityBorder" }
+		)
+		col = col + 1 + 1 -- skip the space between bar and percentage
+
+		table.insert(
+			highlights,
+			{ line = line, col_start = col, col_end = -1, hl_group = "GHDashboardActivityPercent" }
+		)
+	end
+
+	return highlights
+end
+
 return ActivityGraph

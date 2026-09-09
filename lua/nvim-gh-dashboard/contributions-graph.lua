@@ -65,4 +65,27 @@ function ContributionsGraph:get_lines()
 	return lines
 end
 
+---Returns per-character highlight spans for the rendered graph lines, so that
+---each day can be colored according to its contribution intensity (see
+---`Contribution:get_highlight_group`).
+---@return table[] highlights list of `{ line = number, col = number, hl_group = string }`
+---(0-based `line`/`col`, matching the lines returned by `get_lines`)
+function ContributionsGraph:get_highlights()
+	local highlights = {}
+
+	for i = 1, #self.grid do
+		for col, contribution in ipairs(self.grid[i]) do
+			if contribution then
+				table.insert(highlights, {
+					line = i - 1,
+					col = col - 1,
+					hl_group = contribution:get_highlight_group(),
+				})
+			end
+		end
+	end
+
+	return highlights
+end
+
 return ContributionsGraph
