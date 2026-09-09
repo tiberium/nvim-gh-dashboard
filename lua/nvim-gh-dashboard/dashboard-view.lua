@@ -96,7 +96,9 @@ end
 ---@param buf_id number
 ---@param highlights table[]
 ---@param line_offset number|nil defaults to 0
----@param col_offset number|nil defaults to 0
+---@param col_offset number|number[]|nil defaults to 0. Either a single offset
+---applied to every highlight, or an array indexed by `highlight.line + 1`
+---(each source line can be padded independently when centering per-line).
 function M.apply_highlights(buf_id, highlights, line_offset, col_offset)
 	if not vim.api.nvim_buf_is_valid(buf_id) then
 		return
@@ -106,10 +108,11 @@ function M.apply_highlights(buf_id, highlights, line_offset, col_offset)
 	col_offset = col_offset or 0
 
 	for _, highlight in ipairs(highlights) do
-		local col_start = (highlight.col_start or highlight.col) + col_offset
+		local pad = type(col_offset) == "table" and (col_offset[highlight.line + 1] or 0) or col_offset
+		local col_start = (highlight.col_start or highlight.col) + pad
 		local col_end = highlight.col_end or (col_start + 1)
 		if col_end ~= -1 then
-			col_end = col_end + col_offset
+			col_end = col_end + pad
 		end
 
 		vim.api.nvim_buf_add_highlight(
@@ -208,25 +211,80 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	-- Add empty lines for cursor position info
 	table.insert(dashboard_lines, "")
 
-	-- Center the dashboard within the current window, both horizontally and
-	-- vertically, by padding it with leading spaces/blank lines.
+	-- Center everything horizontally relative to the full window width, and
+	-- the whole block vertically. Header lines (title/frame, "User: ...",
+	-- "Year: ...") vary a lot in width, so each is centered independently -
+	-- otherwise shorter lines like "User: ..."/"Year: ..." end up merely
+	-- left-aligned to the frame's left edge instead of centered on screen.
+	-- The two graphs are centered as a block (same padding for every row)
+	-- so their internal grid/bar columns stay aligned with each other.
 	-- Use display width (not byte length) since border lines contain
 	-- multi-byte UTF-8 box-drawing characters.
-	local content_width = 0
-	for _, line in ipairs(dashboard_lines) do
-		content_width = math.max(content_width, vim.fn.strdisplaywidth(line))
-	end
-
 	local win_width = vim.api.nvim_win_get_width(0)
 	local win_height = vim.api.nvim_win_get_height(0)
-	local horizontal_pad = math.max(0, math.floor((win_width - content_width) / 2))
+
+	---@param width number
+	---@return number
+	local function pad_for_width(width)
+		return math.max(0, math.floor((win_width - width) / 2))
+	end
+
+	---@param line string
+	---@return number
+	local function pad_for(line)
+		if line == "" then
+			return 0
+		end
+		return pad_for_width(vim.fn.strdisplaywidth(line))
+	end
+
+	---@param lines string[]
+	---@return number
+	local function max_width(lines)
+		local width = 0
+		for _, line in ipairs(lines) do
+			width = math.max(width, vim.fn.strdisplaywidth(line))
+		end
+		return width
+	end
+
+	local header_pads = {}
+	for i, line in ipairs(header_lines) do
+		header_pads[i] = pad_for(line)
+	end
+
+	local contributions_pad = pad_for_width(max_width(contributions_graph_lines))
+	local contributions_pads = {}
+	for i = 1, #contributions_graph_lines do
+		contributions_pads[i] = contributions_pad
+	end
+
+	local activity_pad = pad_for_width(max_width(activity_graph_lines))
+	local activity_pads = {}
+	for i = 1, #activity_graph_lines do
+		activity_pads[i] = activity_pad
+	end
+
+	local dashboard_pads = {}
+	for i = 1, #header_lines do
+		dashboard_pads[i] = header_pads[i]
+	end
+	for i = 1, #contributions_graph_lines do
+		dashboard_pads[#header_lines + i] = contributions_pads[i]
+	end
+	dashboard_pads[#header_lines + #contributions_graph_lines + 1] = 0 -- blank separator
+	for i = 1, #activity_graph_lines do
+		dashboard_pads[#header_lines + #contributions_graph_lines + 1 + i] = activity_pads[i]
+	end
+	dashboard_pads[#dashboard_lines] = 0 -- trailing blank line for cursor position info
+
 	local vertical_pad = math.max(0, math.floor((win_height - #dashboard_lines) / 2))
 
 	local centered_lines = {}
 	for _ = 1, vertical_pad do
 		table.insert(centered_lines, "")
 	end
-	for _, line in ipairs(dashboard_lines) do
+	for i, line in ipairs(dashboard_lines) do
 		-- Avoid padding blank/gap lines: prepending spaces to an otherwise
 		-- empty line only adds invisible trailing whitespace (which some
 		-- 'listchars' configurations render as visible characters), with no
@@ -234,7 +292,7 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 		if line == "" then
 			table.insert(centered_lines, "")
 		else
-			table.insert(centered_lines, string.rep(" ", horizontal_pad) .. line)
+			table.insert(centered_lines, string.rep(" ", dashboard_pads[i]) .. line)
 		end
 	end
 
@@ -243,23 +301,23 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	end)
 
 	vim.api.nvim_buf_clear_namespace(buf_id, M.namespace, 0, -1)
-	M.apply_highlights(buf_id, M.get_header_highlights(header_lines), vertical_pad, horizontal_pad)
+	M.apply_highlights(buf_id, M.get_header_highlights(header_lines), vertical_pad, header_pads)
 	M.apply_highlights(
 		buf_id,
 		contributions_graph:get_highlights(),
 		vertical_pad + #header_lines,
-		horizontal_pad
+		contributions_pads
 	)
 	M.apply_highlights(
 		buf_id,
 		activity_graph:get_highlights(),
 		vertical_pad + #header_lines + contributions_graph.height + 1,
-		horizontal_pad
+		activity_pads
 	)
 
 	-- Set up cursor position tracking (need to adjust height calculation)
 	local total_height = vertical_pad + #header_lines + contributions_graph.height + activity_graph.height
-	M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
+	M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height, contributions_pad)
 end
 
 ---Opens the dashboard buffer immediately, showing an animated spinner while the
