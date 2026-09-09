@@ -96,16 +96,21 @@ end
 ---@param buf_id number
 ---@param highlights table[]
 ---@param line_offset number|nil defaults to 0
-function M.apply_highlights(buf_id, highlights, line_offset)
+---@param col_offset number|nil defaults to 0
+function M.apply_highlights(buf_id, highlights, line_offset, col_offset)
 	if not vim.api.nvim_buf_is_valid(buf_id) then
 		return
 	end
 
 	line_offset = line_offset or 0
+	col_offset = col_offset or 0
 
 	for _, highlight in ipairs(highlights) do
-		local col_start = highlight.col_start or highlight.col
+		local col_start = (highlight.col_start or highlight.col) + col_offset
 		local col_end = highlight.col_end or (col_start + 1)
+		if col_end ~= -1 then
+			col_end = col_end + col_offset
+		end
 
 		vim.api.nvim_buf_add_highlight(
 			buf_id,
@@ -203,18 +208,48 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	-- Add empty lines for cursor position info
 	table.insert(dashboard_lines, "")
 
+	-- Center the dashboard within the current window, both horizontally and
+	-- vertically, by padding it with leading spaces/blank lines.
+	local content_width = 0
+	for _, line in ipairs(dashboard_lines) do
+		content_width = math.max(content_width, #line)
+	end
+
+	local win_width = vim.api.nvim_win_get_width(0)
+	local win_height = vim.api.nvim_win_get_height(0)
+	local horizontal_pad = math.max(0, math.floor((win_width - content_width) / 2))
+	local vertical_pad = math.max(0, math.floor((win_height - #dashboard_lines) / 2))
+
+	local centered_lines = {}
+	for _ = 1, vertical_pad do
+		table.insert(centered_lines, "")
+	end
+	for _, line in ipairs(dashboard_lines) do
+		table.insert(centered_lines, string.rep(" ", horizontal_pad) .. line)
+	end
+
 	buffer_helpers.with_modifiable_buffer(buf_id, function()
-		vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, dashboard_lines)
+		vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, centered_lines)
 	end)
 
 	vim.api.nvim_buf_clear_namespace(buf_id, M.namespace, 0, -1)
-	M.apply_highlights(buf_id, M.get_header_highlights(header_lines))
-	M.apply_highlights(buf_id, contributions_graph:get_highlights(), #header_lines)
-	M.apply_highlights(buf_id, activity_graph:get_highlights(), #header_lines + contributions_graph.height + 1)
+	M.apply_highlights(buf_id, M.get_header_highlights(header_lines), vertical_pad, horizontal_pad)
+	M.apply_highlights(
+		buf_id,
+		contributions_graph:get_highlights(),
+		vertical_pad + #header_lines,
+		horizontal_pad
+	)
+	M.apply_highlights(
+		buf_id,
+		activity_graph:get_highlights(),
+		vertical_pad + #header_lines + contributions_graph.height + 1,
+		horizontal_pad
+	)
 
 	-- Set up cursor position tracking (need to adjust height calculation)
-	local total_height = #header_lines + contributions_graph.height + activity_graph.height
-	M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height)
+	local total_height = vertical_pad + #header_lines + contributions_graph.height + activity_graph.height
+	M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
 end
 
 ---Opens the dashboard buffer immediately, showing an animated spinner while the
@@ -262,16 +297,18 @@ end
 ---@param contributions_graph ContributionsGraph
 ---@param activity_graph ActivityGraph
 ---@param total_height number
-function M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height)
-	CursorTracking.setup(buf_id, contributions_graph, activity_graph, total_height)
+---@param horizontal_pad number|nil defaults to 0
+function M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
+	CursorTracking.setup(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
 end
 
 ---Converts global cursor position to graph-local coordinates
 ---@param header_height number
+---@param horizontal_pad number|nil defaults to 0
 ---@return number|nil line ContributionsGraph-local line (1-7), nil if outside graph
 ---@return number col ContriutionsGraph-local column
-function M.get_graph_cursor_position(header_height)
-	return CursorTracking.get_graph_cursor_position(header_height)
+function M.get_graph_cursor_position(header_height, horizontal_pad)
+	return CursorTracking.get_graph_cursor_position(header_height, horizontal_pad)
 end
 
 ---Updates the cursor position display in the buffer
@@ -279,8 +316,9 @@ end
 ---@param contributions_graph ContributionsGraph
 ---@param activity_graph ActivityGraph
 ---@param total_height number
-function M.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height)
-	CursorTracking.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height)
+---@param horizontal_pad number|nil defaults to 0
+function M.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
+	CursorTracking.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
 end
 
 return M
