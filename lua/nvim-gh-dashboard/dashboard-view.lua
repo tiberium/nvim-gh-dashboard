@@ -136,6 +136,17 @@ function M.create_buffer()
 
 	local buf_id = vim.api.nvim_get_current_buf()
 
+	-- Disable gutters (number/sign/fold columns). These are window-local and
+	-- independent from the user's global config; if left enabled they eat
+	-- into the window's left edge while `nvim_win_get_width` still reports
+	-- the *full* window width, so horizontal-centering math would treat
+	-- gutter columns as usable text space and shift the centered content a
+	-- few columns to the right of where it visually should be.
+	vim.wo.number = false
+	vim.wo.relativenumber = false
+	vim.wo.signcolumn = "no"
+	vim.wo.foldcolumn = "0"
+
 	vim.bo.modifiable = false
 	vim.bo.readonly = true
 
