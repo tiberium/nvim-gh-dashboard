@@ -341,12 +341,7 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 
 	vim.api.nvim_buf_clear_namespace(buf_id, M.namespace, 0, -1)
 	M.apply_highlights(buf_id, M.get_header_highlights(header_lines), vertical_pad, header_pads)
-	M.apply_highlights(
-		buf_id,
-		contributions_graph:get_highlights(),
-		vertical_pad + #header_lines,
-		contributions_pads
-	)
+	M.apply_highlights(buf_id, contributions_graph:get_highlights(), vertical_pad + #header_lines, contributions_pads)
 	M.apply_highlights(
 		buf_id,
 		activity_graph:get_highlights(),
@@ -450,7 +445,13 @@ end
 ---@param total_height number
 ---@param horizontal_pad number|nil defaults to 0
 function M.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
-	CursorTracking.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
+	CursorTracking.update_contribution_details(
+		buf_id,
+		contributions_graph,
+		activity_graph,
+		total_height,
+		horizontal_pad
+	)
 end
 
 return M
