@@ -227,7 +227,15 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 		table.insert(centered_lines, "")
 	end
 	for _, line in ipairs(dashboard_lines) do
-		table.insert(centered_lines, string.rep(" ", horizontal_pad) .. line)
+		-- Avoid padding blank/gap lines: prepending spaces to an otherwise
+		-- empty line only adds invisible trailing whitespace (which some
+		-- 'listchars' configurations render as visible characters), with no
+		-- centering benefit since there is no visible content to center.
+		if line == "" then
+			table.insert(centered_lines, "")
+		else
+			table.insert(centered_lines, string.rep(" ", horizontal_pad) .. line)
+		end
 	end
 
 	buffer_helpers.with_modifiable_buffer(buf_id, function()
