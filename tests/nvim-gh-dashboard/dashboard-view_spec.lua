@@ -1,6 +1,7 @@
 local GithubService = require("nvim-gh-dashboard.github-service")
 local DashboardView = require("nvim-gh-dashboard.dashboard-view")
 local ContributionMetadata = require("nvim-gh-dashboard.contribution-metadata")
+local CursorTracking = require("nvim-gh-dashboard.cursor-tracking")
 
 describe("dashboard-view", function()
 	local default_chars = { filled = "#", high = "@", empty = "." }
@@ -12,6 +13,18 @@ describe("dashboard-view", function()
 			local joined = table.concat(lines, "\n")
 			assert.matches("User: octocat", joined)
 			assert.matches("Year: 2024", joined)
+		end)
+	end)
+
+	describe("create_buffer", function()
+		it("hides listchars in the dashboard window", function()
+			vim.wo.list = true
+
+			local buf_id = DashboardView.create_buffer()
+
+			assert.is_false(vim.wo.list)
+
+			vim.api.nvim_buf_delete(buf_id, { force = true })
 		end)
 	end)
 
@@ -76,6 +89,35 @@ describe("dashboard-view", function()
 			local joined = table.concat(lines, "\n")
 			assert.matches("User: octocat", joined)
 			assert.is_true(#lines > 0)
+
+			vim.api.nvim_buf_delete(buf_id, { force = true })
+		end)
+	end)
+
+	describe("cursor tracking", function()
+		it("centers contribution details in the dashboard window", function()
+			local buf_id = vim.api.nvim_create_buf(false, true)
+			vim.api.nvim_set_current_buf(buf_id)
+			vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, vim.fn["repeat"]({ "" }, 20))
+
+			local tooltip = "5 contributions on January 21."
+			local contributions_graph = {
+				height = 7,
+				grid = {
+					{
+						{ tooltip = tooltip },
+					},
+				},
+			}
+			local activity_graph = { height = 0 }
+			local total_height = 14
+			vim.api.nvim_win_set_cursor(0, { 8, 0 })
+
+			CursorTracking.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height, 0)
+
+			local expected_pad = math.floor((vim.api.nvim_win_get_width(0) - vim.fn.strdisplaywidth(tooltip)) / 2)
+			local detail_line = vim.api.nvim_buf_get_lines(buf_id, total_height + 2, total_height + 3, false)[1]
+			assert.equals(string.rep(" ", expected_pad) .. tooltip, detail_line)
 
 			vim.api.nvim_buf_delete(buf_id, { force = true })
 		end)

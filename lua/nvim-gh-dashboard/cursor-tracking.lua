@@ -64,8 +64,9 @@ function M.update_contribution_details(buf_id, contributions_graph, activity_gra
 		end
 	end
 
+	local tooltip_pad = math.max(0, math.floor((vim.api.nvim_win_get_width(0) - vim.fn.strdisplaywidth(tooltip)) / 2))
 	local position_line_idx = total_height + 2
-	buffer_helpers.update_line(buf_id, position_line_idx, tooltip)
+	buffer_helpers.update_line(buf_id, position_line_idx, string.rep(" ", tooltip_pad) .. tooltip)
 end
 
 return M

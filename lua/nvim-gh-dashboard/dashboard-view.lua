@@ -208,6 +208,7 @@ function M.create_buffer()
 	vim.wo.relativenumber = false
 	vim.wo.signcolumn = "no"
 	vim.wo.foldcolumn = "0"
+	vim.wo.list = false
 
 	vim.bo.modifiable = false
 	vim.bo.readonly = true
