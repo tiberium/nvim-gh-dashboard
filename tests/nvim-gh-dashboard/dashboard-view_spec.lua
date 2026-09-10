@@ -16,6 +16,18 @@ describe("dashboard-view", function()
 		end)
 	end)
 
+	describe("create_buffer", function()
+		it("hides listchars in the dashboard window", function()
+			vim.wo.list = true
+
+			local buf_id = DashboardView.create_buffer()
+
+			assert.is_false(vim.wo.list)
+
+			vim.api.nvim_buf_delete(buf_id, { force = true })
+		end)
+	end)
+
 	describe("spinner", function()
 		it("animates a braille frame into the target line", function()
 			local buf_id = vim.api.nvim_create_buf(false, true)
