@@ -2,6 +2,7 @@ local M = {}
 
 local ContributionsGraph = require("nvim-gh-dashboard.contributions-graph")
 local ActivityGraph = require("nvim-gh-dashboard.activity-graph")
+local AiUsageGraph = require("nvim-gh-dashboard.ai-usage-graph")
 local Contribution = require("nvim-gh-dashboard.contribution")
 local GithubService = require("nvim-gh-dashboard.github-service")
 local buffer_helpers = require("nvim-gh-dashboard.buffer-helpers")
@@ -285,6 +286,7 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 
 	-- Add empty lines for cursor position info
 	table.insert(dashboard_lines, "")
+	table.insert(dashboard_lines, "")
 
 	-- Center everything horizontally relative to the full window width, and
 	-- the whole block vertically. Header lines (title/frame, "User: ...",
@@ -353,6 +355,59 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	-- Set up cursor position tracking (need to adjust height calculation)
 	local total_height = vertical_pad + #header_lines + contributions_graph.height + activity_graph.height
 	M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height, contributions_pad)
+
+	local billing_period = os.date("*t")
+	local spinner_line_idx
+	local spinner_timer
+	GithubService.fetch_ai_usage(billing_period.year, billing_period.month, function()
+		if not vim.api.nvim_buf_is_valid(buf_id) then
+			return
+		end
+
+		spinner_line_idx = vim.api.nvim_buf_line_count(buf_id)
+		local spinner_message = "Loading AI usage..."
+		local spinner_pad = pad_for_width(
+			vim.api.nvim_win_get_width(0),
+			vim.fn.strdisplaywidth(Spinner.spinner_frames[1] .. " " .. spinner_message)
+		)
+		buffer_helpers.with_modifiable_buffer(buf_id, function()
+			vim.api.nvim_buf_set_lines(buf_id, -1, -1, false, { "" })
+		end)
+		spinner_timer = M.start_spinner(buf_id, spinner_line_idx, spinner_message, spinner_pad)
+	end, function(usage)
+		M.stop_spinner(spinner_timer)
+		if not vim.api.nvim_buf_is_valid(buf_id) then
+			return
+		end
+
+		local ai_usage_graph = AiUsageGraph.new(usage, chars)
+		local ai_usage_lines = ai_usage_graph:get_lines()
+		local ai_usage_pad = pad_for_width(vim.api.nvim_win_get_width(0), max_width(ai_usage_lines))
+		local ai_usage_pads = {}
+		for i = 1, #ai_usage_lines do
+			ai_usage_pads[i] = ai_usage_pad
+		end
+
+		buffer_helpers.with_modifiable_buffer(buf_id, function()
+			vim.api.nvim_buf_set_lines(
+				buf_id,
+				spinner_line_idx,
+				spinner_line_idx + 1,
+				false,
+				apply_horizontal_padding(ai_usage_lines, ai_usage_pads)
+			)
+		end)
+		M.apply_highlights(buf_id, ai_usage_graph:get_highlights(), spinner_line_idx, ai_usage_pads)
+	end, function()
+		if not vim.api.nvim_buf_is_valid(buf_id) or not spinner_line_idx then
+			return
+		end
+
+		M.stop_spinner(spinner_timer)
+		buffer_helpers.with_modifiable_buffer(buf_id, function()
+			vim.api.nvim_buf_set_lines(buf_id, spinner_line_idx, spinner_line_idx + 1, false, {})
+		end)
+	end)
 end
 
 ---Opens the dashboard buffer immediately, showing an animated spinner while the

@@ -34,6 +34,13 @@ M.defaults = {
 	GHDashboardActivityBarFilled = { link = "Function" },
 	GHDashboardActivityBarEmpty = { link = "Comment" },
 	GHDashboardActivityPercent = { link = "Number" },
+
+	-- AI usage graph
+	GHDashboardAiUsageTitle = { link = "Title" },
+	GHDashboardAiUsageLabel = { link = "Identifier" },
+	GHDashboardAiUsageBorder = { link = "NonText" },
+	GHDashboardAiUsageBar = { link = "DiagnosticWarn" },
+	GHDashboardAiUsageValue = { link = "Number" },
 }
 
 ---Sets up (defines) all the highlight groups used by the dashboard, applying
