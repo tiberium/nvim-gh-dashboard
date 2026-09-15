@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.1.0...v1.2.0) (2026-09-15)
+
+
+### Features
+
+* Add AI Usage graphs ([#13](https://github.com/tiberium/nvim-gh-dashboard/issues/13)) ([d246339](https://github.com/tiberium/nvim-gh-dashboard/commit/d246339d8e4c619ebab48141b605492191fe05d4))
+
 ## [1.1.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.0.0...v1.1.0) (2026-09-15)
 
 
