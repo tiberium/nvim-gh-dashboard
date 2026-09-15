@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.0.0...v1.1.0) (2026-09-15)
+
+
+### Features
+
+* Open file if passed to nvim on startup ([#11](https://github.com/tiberium/nvim-gh-dashboard/issues/11)) ([5211995](https://github.com/tiberium/nvim-gh-dashboard/commit/5211995c34411529846e983b7cd7207b6952481e))
+
 ## 1.0.0 (2026-09-15)
 
 
