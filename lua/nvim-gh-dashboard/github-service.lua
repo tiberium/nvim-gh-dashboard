@@ -126,4 +126,116 @@ function M.fetch_dashboard_data(username, year, use_cache, on_success, on_error)
 	})
 end
 
+---@param quota_response table
+---@param usage_response table
+---@return AiUsageData|nil
+function M.parse_ai_usage(quota_response, usage_response)
+	local quota = quota_response.quota_snapshots and quota_response.quota_snapshots.premium_interactions
+	if not quota then
+		return nil
+	end
+
+	local additional_credits = 0
+	local additional_amount = 0
+	for _, item in ipairs(usage_response.usageItems or {}) do
+		additional_credits = additional_credits + (item.netQuantity or 0)
+		additional_amount = additional_amount + (item.netAmount or 0)
+	end
+
+	local included_credits = quota.entitlement or 0
+	return {
+		additional_budget_credits = quota.overage_entitlement or 0,
+		additional_credits = additional_credits,
+		additional_amount = additional_amount,
+		included_credits = included_credits,
+		included_credits_used = math.min(quota.credits_used or 0, included_credits),
+		over_pool_credits = math.max(0, (quota.credits_used or 0) - included_credits),
+	}
+end
+
+---@param args string[]
+---@param on_success fun(response: table)
+---@param on_error fun()
+local function fetch_gh_json(args, on_success, on_error)
+	local output = {}
+	local job_id = vim.fn.jobstart(args, {
+		on_stdout = function(_, data)
+			vim.list_extend(output, data)
+		end,
+		on_exit = vim.schedule_wrap(function(_, code)
+			if code ~= 0 then
+				on_error()
+				return
+			end
+
+			local ok, response = pcall(vim.fn.json_decode, table.concat(output, "\n"))
+			if ok then
+				on_success(response)
+			else
+				on_error()
+			end
+		end),
+	})
+
+	if job_id <= 0 then
+		on_error()
+	end
+end
+
+---@param args string[]
+---@param on_success fun()
+---@param on_error fun()
+local function run_gh_command(args, on_success, on_error)
+	local job_id = vim.fn.jobstart(args, {
+		on_exit = vim.schedule_wrap(function(_, code)
+			if code == 0 then
+				on_success()
+			else
+				on_error()
+			end
+		end),
+	})
+
+	if job_id <= 0 then
+		on_error()
+	end
+end
+
+---Fetches personal Copilot usage through the authenticated GitHub CLI. An
+---unauthenticated or unavailable CLI simply results in no panel data.
+---@param year number
+---@param month number
+---@param on_loading fun() Called after GitHub CLI authentication succeeds
+---@param on_success fun(usage: AiUsageData)
+---@param on_error fun() Called after authentication when a usage request fails
+function M.fetch_ai_usage(year, month, on_loading, on_success, on_error)
+	if vim.fn.executable("gh") ~= 1 then
+		return
+	end
+
+	run_gh_command({ "gh", "auth", "status", "--hostname", "github.com" }, function()
+		on_loading()
+		fetch_gh_json({ "gh", "api", "copilot_internal/user" }, function(quota_response)
+			local login = quota_response.login
+			if not login then
+				on_error()
+				return
+			end
+
+			fetch_gh_json({
+				"gh",
+				"api",
+				string.format("users/%s/settings/billing/ai_credit/usage?year=%d&month=%d", login, year, month),
+			}, function(usage_response)
+				local usage = M.parse_ai_usage(quota_response, usage_response)
+				if usage then
+					on_success(usage)
+				else
+					on_error()
+				end
+			end, on_error)
+		end, on_error)
+	end, function() end)
+end
+
 return M

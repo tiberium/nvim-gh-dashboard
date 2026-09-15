@@ -12,6 +12,7 @@ A Neovim plugin that displays GitHub contribution graphs directly in your editor
 - 📊 **ASCII Contribution Graph** - Beautiful visualization of GitHub contributions 
 - 👤 **ASCII Activity Graph** - Beautiful summary visualization of GitHub activities
 - 🎯 **Interactive Cursor** - Move cursor to see contribution details for specific days
+- 💳 **AI Usage** - Shows personal Copilot credit and additional-usage budget consumption when `gh` is authenticated
 - ⚙️ **Configurable** - Set custom username and year
 - 🚀 **Fast** - Fetches data directly from GitHub
 - 🎨 **Colorful UI** - Read-only buffer, colored using your current colorscheme's palette, fully customizable
@@ -20,6 +21,7 @@ A Neovim plugin that displays GitHub contribution graphs directly in your editor
 
 - Neovim >= 0.7.0
 - [plenary.nvim](https://github.com/nvim-lua/plenary.nvim) - Required for HTTP requests
+- [GitHub CLI](https://cli.github.com/) (optional) - Authenticate with `gh auth login` to show the AI Usage panel
 
 ## Installation
 
@@ -125,6 +127,11 @@ palette plugin is required.
 | `GHDashboardActivityBarFilled` | `Function` | The filled portion of an activity bar |
 | `GHDashboardActivityBarEmpty` | `Comment` | The empty portion of an activity bar |
 | `GHDashboardActivityPercent` | `Number` | The trailing percentage value |
+| `GHDashboardAiUsageTitle` | `Title` | The AI Usage section heading |
+| `GHDashboardAiUsageLabel` | `Identifier` | Labels in AI Usage graphs |
+| `GHDashboardAiUsageBorder` | `NonText` | The `[`/`]` brackets around AI Usage bars |
+| `GHDashboardAiUsageBar` | `DiagnosticWarn` | Filled AI Usage bar portions |
+| `GHDashboardAiUsageValue` | `Number` | AI Usage amounts and remaining budget |
 
 Every group can be overridden through `opts.colors`, using the same shape
 accepted by `vim.api.nvim_set_hl()` (e.g. `{ fg = "#rrggbb" }`, `{ link =

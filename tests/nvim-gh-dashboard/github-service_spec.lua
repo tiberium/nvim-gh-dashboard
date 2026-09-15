@@ -66,6 +66,56 @@ describe("github-service", function()
 		end)
 	end)
 
+	describe("parse_ai_usage", function()
+		it("combines the Copilot quota with additional billing usage", function()
+			local usage = GithubService.parse_ai_usage({
+				quota_snapshots = {
+					premium_interactions = {
+						overage_permitted = true,
+						overage_entitlement = 5000,
+						entitlement = 1500,
+						credits_used = 1800,
+					},
+				},
+			}, {
+				usageItems = {
+					{ netQuantity = 200, netAmount = 2 },
+					{ netQuantity = 100.5, netAmount = 1.005 },
+				},
+			})
+
+			assert.same({
+				additional_budget_credits = 5000,
+				additional_credits = 300.5,
+				additional_amount = 3.005,
+				included_credits = 1500,
+				included_credits_used = 1500,
+				over_pool_credits = 300,
+			}, usage)
+		end)
+
+		it("returns zero additional budget usage when additional usage is not permitted", function()
+			local usage = GithubService.parse_ai_usage({
+				quota_snapshots = {
+					premium_interactions = {
+						overage_permitted = false,
+						entitlement = 1500,
+						credits_used = 25,
+					},
+				},
+			}, {})
+
+			assert.same({
+				additional_budget_credits = 0,
+				additional_credits = 0,
+				additional_amount = 0,
+				included_credits = 1500,
+				included_credits_used = 25,
+				over_pool_credits = 0,
+			}, usage)
+		end)
+	end)
+
 	describe("fetch_dashboard_data", function()
 		it("uses the cached page and does not hit the network again", function()
 			local html = fixtures.page(fixtures.sample_entries)

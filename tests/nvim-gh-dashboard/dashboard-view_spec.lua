@@ -73,9 +73,21 @@ describe("dashboard-view", function()
 	end)
 
 	describe("render_dashboard", function()
-		it("renders the header and graphs into the buffer", function()
+		it("renders the header, graphs, and authenticated AI usage panel into the buffer", function()
 			local Contribution = require("nvim-gh-dashboard.contribution")
 			local buf_id = vim.api.nvim_create_buf(false, true)
+			local original_fetch_ai_usage = GithubService.fetch_ai_usage
+			GithubService.fetch_ai_usage = function(_, _, on_loading, on_success, _)
+				on_loading()
+				on_success({
+					additional_budget_credits = 5000,
+					additional_credits = 300,
+					additional_amount = 3,
+					included_credits = 1500,
+					included_credits_used = 1500,
+					over_pool_credits = 300,
+				})
+			end
 
 			local contributions = {}
 			for day = 0, 6 do
@@ -88,8 +100,13 @@ describe("dashboard-view", function()
 			local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
 			local joined = table.concat(lines, "\n")
 			assert.matches("User: octocat", joined)
+			assert.matches("AI Usage", joined)
+			assert.matches("Additional budget", joined)
+			assert.matches("Included AI credits", joined)
+			assert.matches("Over%-pool AI credits", joined)
 			assert.is_true(#lines > 0)
 
+			GithubService.fetch_ai_usage = original_fetch_ai_usage
 			vim.api.nvim_buf_delete(buf_id, { force = true })
 		end)
 	end)
