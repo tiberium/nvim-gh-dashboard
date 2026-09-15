@@ -66,9 +66,13 @@ If you want to play around with the plugin, clone this repository, and configure
 ### Basic Usage
 
 ```lua
--- Uses defaults: current year, "torvalds" username
+-- Opens automatically when Neovim starts without a file.
+-- Uses defaults: current year, "torvalds" username.
 require("nvim-gh-dashboard").setup()
 ```
+
+When Neovim starts with a file (for example, `nvim path/to/file.txt`), setup
+keeps that file open. Use `:GHDashboard` to open the dashboard at any time.
 
 ### Custom Configuration
 

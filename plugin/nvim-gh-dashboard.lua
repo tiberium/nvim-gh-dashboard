@@ -25,7 +25,7 @@ vim.api.nvim_create_user_command("GHDashboard", function(cmd_opts)
 		setup_opts.year = year
 	end
 
-	require("nvim-gh-dashboard").setup(setup_opts)
+	require("nvim-gh-dashboard").open_dashboard(setup_opts)
 end, {
 	nargs = "*",
 	desc = "Open the GitHub contributions dashboard",
