@@ -238,6 +238,14 @@ PLENARY_PATH=/path/to/plenary.nvim \
   -c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal_init.lua'}"
 ```
 
+## Releases
+
+Releases are managed by
+[Release Please](https://github.com/googleapis/release-please). Conventional
+Commits merged into `main` update an automated release pull request. Merging
+that pull request creates the GitHub release and tag, and updates
+`CHANGELOG.md` and `version.txt`.
+
 `PLENARY_PATH` can be omitted if `plenary.nvim` is already installed in one of the common plugin manager locations.
 
 ## Contributing
