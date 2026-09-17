@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.2.0...v1.3.0) (2026-09-17)
+
+
+### Features
+
+* Add Horizontal Menu ([#15](https://github.com/tiberium/nvim-gh-dashboard/issues/15)) ([88ef27e](https://github.com/tiberium/nvim-gh-dashboard/commit/88ef27e8b85927e9b5e49723246af474d3c0bc79))
+
 ## [1.2.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.1.0...v1.2.0) (2026-09-15)
 
 
