@@ -16,6 +16,11 @@ M.defaults = {
 	GHDashboardHeaderLabel = { link = "Comment" },
 	GHDashboardHeaderValue = { link = "Identifier" },
 
+	-- Dashboard menu
+	GHDashboardMenuShortcut = { link = "Function", bold = true },
+	GHDashboardMenuLabel = { link = "String" },
+	GHDashboardSeparator = { link = "NonText" },
+
 	-- Contributions graph: intensity scale, from "no contributions" to the
 	-- highest tier (100+ contributions in a single day), mirroring the
 	-- multiple shades of green used on github.com.
