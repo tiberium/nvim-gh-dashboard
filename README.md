@@ -12,7 +12,7 @@ A Neovim plugin that displays GitHub contribution graphs directly in your editor
 - 📊 **ASCII Contribution Graph** - Beautiful visualization of GitHub contributions 
 - 👤 **ASCII Activity Graph** - Beautiful summary visualization of GitHub activities
 - 🎯 **Interactive Cursor** - Move cursor to see contribution details for specific days
-- 💳 **AI Usage** - Shows personal Copilot credit and additional-usage budget consumption when `gh` is authenticated
+- 💳 **AI Usage** - Press `A` in the dashboard to load personal Copilot credit and additional-usage budget consumption when `gh` is authenticated
 - ⚙️ **Configurable** - Set custom username and year
 - 🚀 **Fast** - Fetches data directly from GitHub
 - 🎨 **Colorful UI** - Read-only buffer, colored using your current colorscheme's palette, fully customizable
@@ -127,6 +127,9 @@ palette plugin is required.
 | `GHDashboardActivityBarFilled` | `Function` | The filled portion of an activity bar |
 | `GHDashboardActivityBarEmpty` | `Comment` | The empty portion of an activity bar |
 | `GHDashboardActivityPercent` | `Number` | The trailing percentage value |
+| `GHDashboardMenuShortcut` | `Function` (bold) | The menu shortcut, such as `A` in `[A] AI` |
+| `GHDashboardMenuLabel` | `String` | The label of an ASCII menu button |
+| `GHDashboardSeparator` | `NonText` | The full-width separator above the AI Usage panel |
 | `GHDashboardAiUsageTitle` | `Title` | The AI Usage section heading |
 | `GHDashboardAiUsageLabel` | `Identifier` | Labels in AI Usage graphs |
 | `GHDashboardAiUsageBorder` | `NonText` | The `[`/`]` brackets around AI Usage bars |
@@ -205,7 +208,8 @@ require("nvim-gh-dashboard").setup({
 1. **Launch**: Plugin automatically opens when Neovim starts (if configured in your init)
 2. **Navigate**: Use arrow keys or `hjkl` to move cursor around the contribution graph
 3. **View Details**: When cursor is on the graph, the bottom line shows contribution details for that day
-4. **Read-Only**: The buffer is read-only, so you can't accidentally edit the content
+4. **AI Usage**: Press uppercase `A` to load your authenticated GitHub Copilot usage; it is not requested when the dashboard opens
+5. **Read-Only**: The buffer is read-only, so you can't accidentally edit the content
 
 ## How It Works
 

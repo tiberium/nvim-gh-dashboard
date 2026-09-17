@@ -7,10 +7,12 @@ describe("dashboard-view", function()
 	local default_chars = { filled = "#", high = "@", empty = "." }
 
 	describe("create_header", function()
-		it("includes the username and year", function()
-			local lines = DashboardView.create_header(2024, "octocat")
+		it("includes the AI menu, username, and year", function()
+			local lines = DashboardView.create_header(2024, "octocat", 80)
 
 			local joined = table.concat(lines, "\n")
+			assert.matches("%[A%] AI", joined)
+			assert.equals(string.rep("─", 80), lines[2])
 			assert.matches("User: octocat", joined)
 			assert.matches("Year: 2024", joined)
 		end)
@@ -73,11 +75,14 @@ describe("dashboard-view", function()
 	end)
 
 	describe("render_dashboard", function()
-		it("renders the header, graphs, and authenticated AI usage panel into the buffer", function()
+		it("loads the authenticated AI usage panel only after pressing A", function()
 			local Contribution = require("nvim-gh-dashboard.contribution")
+			vim.api.nvim_win_set_height(0, 40)
 			local buf_id = vim.api.nvim_create_buf(false, true)
 			local original_fetch_ai_usage = GithubService.fetch_ai_usage
+			local fetch_ai_usage_calls = 0
 			GithubService.fetch_ai_usage = function(_, _, on_loading, on_success, _)
+				fetch_ai_usage_calls = fetch_ai_usage_calls + 1
 				on_loading()
 				on_success({
 					additional_budget_credits = 5000,
@@ -100,10 +105,34 @@ describe("dashboard-view", function()
 			local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
 			local joined = table.concat(lines, "\n")
 			assert.matches("User: octocat", joined)
+			assert.matches("%[A%] AI", joined)
+			assert.same({ "", "" }, { lines[1], lines[2] })
+			assert.equals(0, fetch_ai_usage_calls)
+			assert.is_nil(joined:find("AI Usage", 1, true))
+			local separator = string.rep("─", vim.api.nvim_win_get_width(0))
+			local separator_idx
+			for i = #lines, 1, -1 do
+				if lines[i] == separator then
+					separator_idx = i
+					break
+				end
+			end
+			assert.is_not_nil(separator_idx)
+			assert.same({ "", "" }, { lines[#lines - 1], lines[#lines] })
+
+			vim.api.nvim_buf_call(buf_id, function()
+				vim.cmd("normal A")
+			end)
+
+			lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
+			joined = table.concat(lines, "\n")
+			assert.equals(1, fetch_ai_usage_calls)
 			assert.matches("AI Usage", joined)
 			assert.matches("Additional budget", joined)
 			assert.matches("Included AI credits", joined)
 			assert.matches("Over%-pool AI credits", joined)
+			local ai_title = lines[separator_idx + 1]:gsub("^%s+", "")
+			assert.equals("AI Usage", ai_title)
 			assert.is_true(#lines > 0)
 
 			GithubService.fetch_ai_usage = original_fetch_ai_usage
