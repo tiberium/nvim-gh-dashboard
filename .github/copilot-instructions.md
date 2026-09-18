@@ -26,6 +26,10 @@ PLENARY_PATH=/path/to/plenary.nvim \
 It obtains Plenary from `PLENARY_PATH`, `.tests/plenary.nvim`, or common
 lazy.nvim/packer locations, so set `PLENARY_PATH` when none of those exist.
 
+For machine-specific instructions, also read
+`.github/copilot-instructions-local.md` when it exists. That file is ignored
+by Git and must not contain repository-wide guidance.
+
 ## Architecture
 
 - `plugin/nvim-gh-dashboard.lua` registers `:GHDashboard [username] [year]`;

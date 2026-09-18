@@ -23,15 +23,29 @@ local HIGHLIGHT_TO_END_OF_LINE = -1
 local FIRST_LUA_INDEX = 1
 local NEXT_LINE_OFFSET = 1
 local CENTER_DIVISOR = 2
-local AI_MENU_SHORTCUT_COLUMN_START = 1
-local AI_MENU_SHORTCUT_COLUMN_END = 2
-local AI_MENU_LABEL_COLUMN_START = 4
 local AI_PANEL_SEPARATOR_OFFSET_FROM_BOTTOM = 1
 local CURSOR_COLUMN_INDEX = 2
+local CONTRIBUTIONS_GRAPH_HEIGHT = 7
+local ACTIVITY_GRAPH_HEIGHT = 4
+local GRAPH_SEPARATOR_HEIGHT = 1
+local CURSOR_DETAILS_HEIGHT = 2
 local vertical_offset = 5
 local ai_usage_height = 4
 local bottom_empty_lines = 2
 local top_empty_lines = 2
+local MENU_BUTTON_SEPARATOR = "  "
+local MENU_BUTTONS = {
+	{ shortcut = "C", label = "Contributions" },
+	{ shortcut = "A", label = "AI" },
+}
+
+local function menu_line()
+	local buttons = {}
+	for _, button in ipairs(MENU_BUTTONS) do
+		table.insert(buttons, "[" .. button.shortcut .. "] " .. button.label)
+	end
+	return table.concat(buttons, MENU_BUTTON_SEPARATOR)
+end
 
 -- Centering helpers shared by `render_dashboard` (header + graphs) and
 -- `open_dashboard` (header-only, while the spinner is showing), so that the
@@ -97,6 +111,28 @@ local function append_ai_panel(lines, panel_line_idx, win_width)
 	end
 end
 
+---@param lines string[]
+---@param section_lines string[]
+---@param reserved_height number
+local function append_section(lines, section_lines, reserved_height)
+	for _, line in ipairs(section_lines) do
+		table.insert(lines, line)
+	end
+	for _ = #section_lines + FIRST_LUA_INDEX, reserved_height do
+		table.insert(lines, "")
+	end
+end
+
+---@param header_height number
+---@return number
+local function dashboard_content_height(header_height)
+	return header_height
+		+ CONTRIBUTIONS_GRAPH_HEIGHT
+		+ GRAPH_SEPARATOR_HEIGHT
+		+ ACTIVITY_GRAPH_HEIGHT
+		+ CURSOR_DETAILS_HEIGHT
+end
+
 ---Prepends the given per-line paddings to each line (skipping blanks, see
 ---`pad_for_line`).
 ---@param lines string[]
@@ -114,6 +150,16 @@ local function apply_horizontal_padding(lines, pads)
 	return padded
 end
 
+---@param buf_id number
+---@param menu_line_idx number 0-based line index
+---@param menu_pad number
+local function focus_menu(buf_id, menu_line_idx, menu_pad)
+	if vim.api.nvim_win_get_buf(CURRENT_WINDOW_ID) ~= buf_id then
+		return
+	end
+	vim.api.nvim_win_set_cursor(CURRENT_WINDOW_ID, { menu_line_idx + FIRST_LUA_INDEX, menu_pad })
+end
+
 ---Creates header lines for the dashboard
 ---@param year number
 ---@param username string
@@ -122,7 +168,7 @@ end
 function M.create_header(year, username, win_width)
 	local header_lines = {}
 
-	table.insert(header_lines, "[A] AI")
+	table.insert(header_lines, menu_line())
 	table.insert(header_lines, separator_for_width(win_width))
 	table.insert(
 		header_lines,
@@ -155,19 +201,25 @@ function M.get_header_highlights(header_lines)
 	for line_idx, line in ipairs(header_lines) do
 		local line0 = line_idx - FIRST_LUA_INDEX
 
-		if line == "[A] AI" then
-			table.insert(highlights, {
-				line = line0,
-				col_start = AI_MENU_SHORTCUT_COLUMN_START,
-				col_end = AI_MENU_SHORTCUT_COLUMN_END,
-				hl_group = "GHDashboardMenuShortcut",
-			})
-			table.insert(highlights, {
-				line = line0,
-				col_start = AI_MENU_LABEL_COLUMN_START,
-				col_end = HIGHLIGHT_TO_END_OF_LINE,
-				hl_group = "GHDashboardMenuLabel",
-			})
+		if line == menu_line() then
+			for _, button in ipairs(MENU_BUTTONS) do
+				local shortcut = "[" .. button.shortcut .. "]"
+				local button_start = line:find(shortcut, FIRST_LUA_INDEX, true)
+				local shortcut_col_start = button_start - FIRST_LUA_INDEX + NEXT_LINE_OFFSET
+				local label_col_start = shortcut_col_start + #shortcut
+				table.insert(highlights, {
+					line = line0,
+					col_start = shortcut_col_start,
+					col_end = shortcut_col_start + NEXT_LINE_OFFSET,
+					hl_group = "GHDashboardMenuShortcut",
+				})
+				table.insert(highlights, {
+					line = line0,
+					col_start = label_col_start,
+					col_end = label_col_start + #button.label,
+					hl_group = "GHDashboardMenuLabel",
+				})
+			end
 		elseif line:match("^─+$") or line:match("^[┌└]") then
 			table.insert(highlights, {
 				line = line0,
@@ -414,20 +466,15 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 
 	-- Combine header and graphs
 	local dashboard_lines = {}
-	for _, line in ipairs(header_lines) do
-		table.insert(dashboard_lines, line)
-	end
-	for _, line in ipairs(contributions_graph_lines) do
-		table.insert(dashboard_lines, line)
-	end
+	append_section(dashboard_lines, header_lines, #header_lines)
+	append_section(dashboard_lines, contributions_graph_lines, CONTRIBUTIONS_GRAPH_HEIGHT)
 	table.insert(dashboard_lines, "")
-	for _, line in ipairs(activity_graph_lines) do
-		table.insert(dashboard_lines, line)
-	end
+	append_section(dashboard_lines, activity_graph_lines, ACTIVITY_GRAPH_HEIGHT)
 
 	-- Add empty lines for cursor position info
-	table.insert(dashboard_lines, "")
-	table.insert(dashboard_lines, "")
+	for _ = FIRST_LUA_INDEX, CURSOR_DETAILS_HEIGHT do
+		table.insert(dashboard_lines, "")
+	end
 
 	-- Center everything horizontally relative to the full window width, and
 	-- the whole block vertically. Header lines (title/frame, "User: ...",
@@ -466,7 +513,7 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	end
 	dashboard_pads[#dashboard_lines] = BUFFER_START_LINE
 
-	local vertical_pad = top_empty_lines + vertical_pad_for(ai_panel_line_idx, #dashboard_lines)
+	local vertical_pad = top_empty_lines + vertical_pad_for(ai_panel_line_idx, dashboard_content_height(#header_lines))
 
 	local centered_lines = {}
 	for _ = FIRST_LUA_INDEX, vertical_pad do
@@ -501,8 +548,16 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	}, ai_panel_line_idx)
 
 	-- Set up cursor position tracking (need to adjust height calculation)
-	local total_height = vertical_pad + #header_lines + contributions_graph.height + activity_graph.height
-	M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height, contributions_pad)
+	local graph_start_line = vertical_pad + #header_lines
+	local cursor_tracking_height = graph_start_line + CONTRIBUTIONS_GRAPH_HEIGHT + ACTIVITY_GRAPH_HEIGHT
+	M.setup_cursor_tracking(
+		buf_id,
+		contributions_graph,
+		activity_graph,
+		cursor_tracking_height,
+		contributions_pad,
+		graph_start_line
+	)
 
 	local ai_usage_requested = false
 	local function request_ai_usage()
@@ -513,31 +568,46 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 		M.load_ai_usage(buf_id, chars, ai_panel_line_idx)
 	end
 
-	vim.keymap.set("n", "A", request_ai_usage, {
-		buffer = buf_id,
-		desc = "Load GitHub Copilot AI usage",
-		nowait = true,
-	})
+	local function focus_contributions()
+		vim.api.nvim_win_set_cursor(CURRENT_WINDOW_ID, { graph_start_line + FIRST_LUA_INDEX, contributions_pad })
+	end
+
+	local menu_actions = {
+		A = request_ai_usage,
+		C = focus_contributions,
+	}
+	for _, button in ipairs(MENU_BUTTONS) do
+		vim.keymap.set("n", button.shortcut, menu_actions[button.shortcut], {
+			buffer = buf_id,
+			desc = button.label,
+			nowait = true,
+		})
+	end
+
 	vim.keymap.set("n", "<CR>", function()
 		local current_line = vim.api.nvim_get_current_line()
-		local button_start = current_line:find("[A]", FIRST_LUA_INDEX, true)
 		local cursor_col = vim.api.nvim_win_get_cursor(CURRENT_WINDOW_ID)[CURSOR_COLUMN_INDEX]
-		if
-			button_start
-			and cursor_col >= button_start - FIRST_LUA_INDEX
-			and cursor_col < button_start - FIRST_LUA_INDEX + #"[A]"
-		then
-			request_ai_usage()
-			return ""
+		for _, button in ipairs(MENU_BUTTONS) do
+			local shortcut = "[" .. button.shortcut .. "]"
+			local button_start = current_line:find(shortcut, FIRST_LUA_INDEX, true)
+			if
+				button_start
+				and cursor_col >= button_start - FIRST_LUA_INDEX
+				and cursor_col < button_start - FIRST_LUA_INDEX + #shortcut
+			then
+				menu_actions[button.shortcut]()
+				return
+			end
 		end
 
-		return "<CR>"
+		vim.api.nvim_feedkeys(vim.keycode("<CR>"), "nx", false)
 	end, {
 		buffer = buf_id,
-		expr = true,
-		desc = "Load GitHub Copilot AI usage",
+		desc = "Activate dashboard menu button",
 		nowait = true,
 	})
+
+	focus_menu(buf_id, vertical_pad, header_pads[FIRST_LUA_INDEX])
 end
 
 ---Opens the dashboard buffer immediately, showing an animated spinner while the
@@ -566,7 +636,7 @@ function M.open_dashboard(username, year, chars)
 		header_pads[i] = pad_for_line(win_width, line)
 	end
 
-	local vertical_pad = top_empty_lines + vertical_pad_for(ai_panel_line_idx, #header_lines)
+	local vertical_pad = top_empty_lines + vertical_pad_for(ai_panel_line_idx, dashboard_content_height(#header_lines))
 
 	local centered_lines = {}
 	for _ = FIRST_LUA_INDEX, vertical_pad do
@@ -589,6 +659,7 @@ function M.open_dashboard(username, year, chars)
 			hl_group = "GHDashboardSeparator",
 		},
 	}, ai_panel_line_idx)
+	focus_menu(buf_id, vertical_pad, header_pads[FIRST_LUA_INDEX])
 
 	-- The header already ends with a blank line; use it to host the spinner
 	local spinner_line_idx = vertical_pad + #header_lines - NEXT_LINE_OFFSET
@@ -625,8 +696,16 @@ end
 ---@param activity_graph ActivityGraph
 ---@param total_height number
 ---@param horizontal_pad number|nil defaults to 0
-function M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
-	CursorTracking.setup(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
+---@param graph_start_line number|nil defaults to the pre-reserved-layout graph position
+function M.setup_cursor_tracking(
+	buf_id,
+	contributions_graph,
+	activity_graph,
+	total_height,
+	horizontal_pad,
+	graph_start_line
+)
+	CursorTracking.setup(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad, graph_start_line)
 end
 
 ---Converts global cursor position to graph-local coordinates
@@ -644,13 +723,22 @@ end
 ---@param activity_graph ActivityGraph
 ---@param total_height number
 ---@param horizontal_pad number|nil defaults to 0
-function M.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
+---@param graph_start_line number|nil defaults to the pre-reserved-layout graph position
+function M.update_contribution_details(
+	buf_id,
+	contributions_graph,
+	activity_graph,
+	total_height,
+	horizontal_pad,
+	graph_start_line
+)
 	CursorTracking.update_contribution_details(
 		buf_id,
 		contributions_graph,
 		activity_graph,
 		total_height,
-		horizontal_pad
+		horizontal_pad,
+		graph_start_line
 	)
 end
 
