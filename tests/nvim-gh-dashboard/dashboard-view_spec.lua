@@ -75,7 +75,7 @@ describe("dashboard-view", function()
 	end)
 
 	describe("render_dashboard", function()
-		it("loads the authenticated AI usage panel only after pressing A", function()
+		it("loads the authenticated AI usage panel after pressing Enter on the AI menu", function()
 			local Contribution = require("nvim-gh-dashboard.contribution")
 			vim.api.nvim_win_set_height(0, 40)
 			local buf_id = vim.api.nvim_create_buf(false, true)
@@ -83,15 +83,17 @@ describe("dashboard-view", function()
 			local fetch_ai_usage_calls = 0
 			GithubService.fetch_ai_usage = function(_, _, on_loading, on_success, _)
 				fetch_ai_usage_calls = fetch_ai_usage_calls + 1
-				on_loading()
-				on_success({
-					additional_budget_credits = 5000,
-					additional_credits = 300,
-					additional_amount = 3,
-					included_credits = 1500,
-					included_credits_used = 1500,
-					over_pool_credits = 300,
-				})
+				vim.schedule(function()
+					on_loading()
+					on_success({
+						additional_budget_credits = 5000,
+						additional_credits = 300,
+						additional_amount = 3,
+						included_credits = 1500,
+						included_credits_used = 1500,
+						over_pool_credits = 300,
+					})
+				end)
 			end
 
 			local contributions = {}
@@ -120,10 +122,30 @@ describe("dashboard-view", function()
 			assert.is_not_nil(separator_idx)
 			assert.same({ "", "" }, { lines[#lines - 1], lines[#lines] })
 
+			local ai_menu_line
+			for i, line in ipairs(lines) do
+				if line:match("^%s*%[A%] AI%s*$") then
+					ai_menu_line = i
+					break
+				end
+			end
+			assert.is_not_nil(ai_menu_line)
+			local ai_button_col = lines[ai_menu_line]:find("[A]", 1, true) - 1
 			vim.api.nvim_buf_call(buf_id, function()
-				vim.cmd("normal A")
+				vim.api.nvim_win_set_cursor(0, { ai_menu_line, ai_button_col + #"[A]" + 1 })
+				vim.api.nvim_feedkeys(vim.keycode("<CR>"), "x", false)
+			end)
+			assert.equals(0, fetch_ai_usage_calls)
+
+			vim.api.nvim_buf_call(buf_id, function()
+				vim.api.nvim_win_set_cursor(0, { ai_menu_line, ai_button_col })
+				vim.api.nvim_feedkeys(vim.keycode("<CR>"), "x", false)
 			end)
 
+			vim.wait(300, function()
+				local panel = table.concat(vim.api.nvim_buf_get_lines(buf_id, 0, -1, false), "\n")
+				return fetch_ai_usage_calls == 1 and panel:find("AI Usage", 1, true) ~= nil
+			end)
 			lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
 			joined = table.concat(lines, "\n")
 			assert.equals(1, fetch_ai_usage_calls)

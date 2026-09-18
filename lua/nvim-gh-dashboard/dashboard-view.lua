@@ -474,14 +474,32 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height, contributions_pad)
 
 	local ai_usage_requested = false
-	vim.keymap.set("n", "A", function()
+	local function request_ai_usage()
 		if ai_usage_requested then
 			return
 		end
 		ai_usage_requested = true
 		M.load_ai_usage(buf_id, chars, ai_panel_line_idx)
+	end
+
+	vim.keymap.set("n", "A", request_ai_usage, {
+		buffer = buf_id,
+		desc = "Load GitHub Copilot AI usage",
+		nowait = true,
+	})
+	vim.keymap.set("n", "<CR>", function()
+		local current_line = vim.api.nvim_get_current_line()
+		local button_start = current_line:find("[A]", 1, true)
+		local cursor_col = vim.api.nvim_win_get_cursor(0)[2]
+		if button_start and cursor_col >= button_start - 1 and cursor_col < button_start - 1 + #"[A]" then
+			request_ai_usage()
+			return ""
+		end
+
+		return "<CR>"
 	end, {
 		buffer = buf_id,
+		expr = true,
 		desc = "Load GitHub Copilot AI usage",
 		nowait = true,
 	})
