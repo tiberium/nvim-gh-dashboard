@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.4.0...v1.5.0) (2026-09-18)
+
+
+### Features
+
+* Setup initial coursor position ([#21](https://github.com/tiberium/nvim-gh-dashboard/issues/21)) ([48bcd8e](https://github.com/tiberium/nvim-gh-dashboard/commit/48bcd8e8997fba96e65015859e5061613c1bfd65))
+
 ## [1.4.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.3.0...v1.4.0) (2026-09-18)
 
 
