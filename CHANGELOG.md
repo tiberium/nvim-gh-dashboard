@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.3.0...v1.4.0) (2026-09-18)
+
+
+### Features
+
+* Add enter support for buttons ([#17](https://github.com/tiberium/nvim-gh-dashboard/issues/17)) ([7b0756d](https://github.com/tiberium/nvim-gh-dashboard/commit/7b0756d825a5e3424f9129e7d2a8ef3ed2215029))
+
 ## [1.3.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.2.0...v1.3.0) (2026-09-17)
 
 
