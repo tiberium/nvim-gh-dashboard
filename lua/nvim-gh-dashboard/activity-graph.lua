@@ -1,6 +1,16 @@
 local ActivityGraph = {}
 ActivityGraph.__index = ActivityGraph
 
+local ACTIVITY_TYPES = { "code_review", "commits", "pull_requests", "issues" }
+local ACTIVITY_PERCENTAGE_TOTAL = 100
+local PERCENTAGE_PER_BAR_CHARACTER = 5
+local ACTIVITY_LABEL_WIDTH = 15
+local FIRST_LUA_INDEX = 1
+local FIRST_HIGHLIGHT_COLUMN = 0
+local CHARACTER_WIDTH = 1
+local INTER_COMPONENT_SPACE_WIDTH = 1
+local HIGHLIGHT_TO_END_OF_LINE = -1
+
 ---@class ActivityGraph
 ---@field activities ActivityMetadata single object with all the activities metadata
 ---@field year number year of the activities
@@ -16,10 +26,10 @@ function ActivityGraph.new(activities, year, chars)
 
 	self.activities = activities
 
-	self.height = 0
+	self.height = FIRST_HIGHLIGHT_COLUMN
 
 	if self.activities then
-		self.height = 4 -- 4 as there are 4 activity directions in GitHub, and we want to render the graph in 4 lines
+		self.height = #ACTIVITY_TYPES
 	end
 
 	self.year = year or tonumber(os.date("%Y"))
@@ -39,12 +49,9 @@ function ActivityGraph:get_lines()
 		return lines
 	end
 
-	-- This is the "resolution" of the graph. 5 means that 100% will be represented in 20 characters (100 / 5 = 20), as a
-	local resolution = 5
-
-	for _, activityType in ipairs({ "code_review", "commits", "pull_requests", "issues" }) do
+	for _, activityType in ipairs(ACTIVITY_TYPES) do
 		local percentage = self.activities[activityType]
-		local bar = self:renderBar(percentage, resolution)
+		local bar = self:renderBar(percentage, PERCENTAGE_PER_BAR_CHARACTER)
 		local line = string.format("%-15s %s %3d%%", activityType, bar, percentage)
 		table.insert(lines, line)
 	end
@@ -54,7 +61,7 @@ end
 
 ---@return string
 function ActivityGraph:renderBar(percentage, resolution)
-	local totalChars = 100 / resolution
+	local totalChars = ACTIVITY_PERCENTAGE_TOTAL / resolution
 	local filledChars = math.ceil(percentage / resolution)
 	local emptyChars = totalChars - filledChars
 
@@ -75,30 +82,28 @@ function ActivityGraph:get_highlights()
 		return highlights
 	end
 
-	local resolution = 5
-	local totalChars = 100 / resolution
-	local label_width = 15
+	local totalChars = ACTIVITY_PERCENTAGE_TOTAL / PERCENTAGE_PER_BAR_CHARACTER
 
-	for line_idx, activityType in ipairs({ "code_review", "commits", "pull_requests", "issues" }) do
+	for line_idx, activityType in ipairs(ACTIVITY_TYPES) do
 		local percentage = self.activities[activityType]
-		local filledChars = math.ceil(percentage / resolution)
+		local filledChars = math.ceil(percentage / PERCENTAGE_PER_BAR_CHARACTER)
 		local emptyChars = totalChars - filledChars
 
-		local line = line_idx - 1
-		local col = 0
+		local line = line_idx - FIRST_LUA_INDEX
+		local col = FIRST_HIGHLIGHT_COLUMN
 
 		table.insert(
 			highlights,
-			{ line = line, col_start = col, col_end = label_width, hl_group = "GHDashboardActivityLabel" }
+			{ line = line, col_start = col, col_end = ACTIVITY_LABEL_WIDTH, hl_group = "GHDashboardActivityLabel" }
 		)
-		col = label_width + 1 -- skip the space between label and bar
+		col = ACTIVITY_LABEL_WIDTH + INTER_COMPONENT_SPACE_WIDTH
 
 		-- opening bracket
 		table.insert(
 			highlights,
-			{ line = line, col_start = col, col_end = col + 1, hl_group = "GHDashboardActivityBorder" }
+			{ line = line, col_start = col, col_end = col + CHARACTER_WIDTH, hl_group = "GHDashboardActivityBorder" }
 		)
-		col = col + 1
+		col = col + CHARACTER_WIDTH
 
 		table.insert(
 			highlights,
@@ -115,14 +120,16 @@ function ActivityGraph:get_highlights()
 		-- closing bracket
 		table.insert(
 			highlights,
-			{ line = line, col_start = col, col_end = col + 1, hl_group = "GHDashboardActivityBorder" }
+			{ line = line, col_start = col, col_end = col + CHARACTER_WIDTH, hl_group = "GHDashboardActivityBorder" }
 		)
-		col = col + 1 + 1 -- skip the space between bar and percentage
+		col = col + CHARACTER_WIDTH + INTER_COMPONENT_SPACE_WIDTH
 
-		table.insert(
-			highlights,
-			{ line = line, col_start = col, col_end = -1, hl_group = "GHDashboardActivityPercent" }
-		)
+		table.insert(highlights, {
+			line = line,
+			col_start = col,
+			col_end = HIGHLIGHT_TO_END_OF_LINE,
+			hl_group = "GHDashboardActivityPercent",
+		})
 	end
 
 	return highlights

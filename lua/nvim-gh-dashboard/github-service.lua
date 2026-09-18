@@ -3,6 +3,14 @@ local M = {}
 local ContributionMetadata = require("nvim-gh-dashboard.contribution-metadata")
 local ActivityMetadata = require("nvim-gh-dashboard.activity-metadata")
 
+local HTTP_OK_STATUS = 200
+local DECEMBER = 12
+local FIRST_DAY_OF_MONTH = 1
+local SUCCESS_EXIT_CODE = 0
+local JOB_START_FAILURE_MAX_ID = 0
+local EXECUTABLE_RESULT = 1
+local ZERO_CREDITS = 0
+
 ---@class DashboardData
 ---@field contributions ContributionMetadata[]
 ---@field activity ActivityMetadata|nil
@@ -22,7 +30,7 @@ local function build_url(username, year)
 
 	if year then
 		-- Yes, GitHub uses be default the last month of the year to select the year...
-		url = url .. "&from=" .. year .. "-12-01"
+		url = url .. "&from=" .. year .. string.format("-%02d-%02d", DECEMBER, FIRST_DAY_OF_MONTH)
 	end
 
 	return url
@@ -107,7 +115,7 @@ function M.fetch_dashboard_data(username, year, use_cache, on_success, on_error)
 			["x-requested-with"] = "XMLHttpRequest",
 		},
 		callback = vim.schedule_wrap(function(response)
-			if response.status ~= 200 then
+			if response.status ~= HTTP_OK_STATUS then
 				on_error(string.format("Failed to fetch GitHub page (status %s).", tostring(response.status)))
 				return
 			end
@@ -135,21 +143,21 @@ function M.parse_ai_usage(quota_response, usage_response)
 		return nil
 	end
 
-	local additional_credits = 0
-	local additional_amount = 0
+	local additional_credits = ZERO_CREDITS
+	local additional_amount = ZERO_CREDITS
 	for _, item in ipairs(usage_response.usageItems or {}) do
-		additional_credits = additional_credits + (item.netQuantity or 0)
-		additional_amount = additional_amount + (item.netAmount or 0)
+		additional_credits = additional_credits + (item.netQuantity or ZERO_CREDITS)
+		additional_amount = additional_amount + (item.netAmount or ZERO_CREDITS)
 	end
 
-	local included_credits = quota.entitlement or 0
+	local included_credits = quota.entitlement or ZERO_CREDITS
 	return {
-		additional_budget_credits = quota.overage_entitlement or 0,
+		additional_budget_credits = quota.overage_entitlement or ZERO_CREDITS,
 		additional_credits = additional_credits,
 		additional_amount = additional_amount,
 		included_credits = included_credits,
-		included_credits_used = math.min(quota.credits_used or 0, included_credits),
-		over_pool_credits = math.max(0, (quota.credits_used or 0) - included_credits),
+		included_credits_used = math.min(quota.credits_used or ZERO_CREDITS, included_credits),
+		over_pool_credits = math.max(ZERO_CREDITS, (quota.credits_used or ZERO_CREDITS) - included_credits),
 	}
 end
 
@@ -163,7 +171,7 @@ local function fetch_gh_json(args, on_success, on_error)
 			vim.list_extend(output, data)
 		end,
 		on_exit = vim.schedule_wrap(function(_, code)
-			if code ~= 0 then
+			if code ~= SUCCESS_EXIT_CODE then
 				on_error()
 				return
 			end
@@ -177,7 +185,7 @@ local function fetch_gh_json(args, on_success, on_error)
 		end),
 	})
 
-	if job_id <= 0 then
+	if job_id <= JOB_START_FAILURE_MAX_ID then
 		on_error()
 	end
 end
@@ -188,7 +196,7 @@ end
 local function run_gh_command(args, on_success, on_error)
 	local job_id = vim.fn.jobstart(args, {
 		on_exit = vim.schedule_wrap(function(_, code)
-			if code == 0 then
+			if code == SUCCESS_EXIT_CODE then
 				on_success()
 			else
 				on_error()
@@ -196,7 +204,7 @@ local function run_gh_command(args, on_success, on_error)
 		end),
 	})
 
-	if job_id <= 0 then
+	if job_id <= JOB_START_FAILURE_MAX_ID then
 		on_error()
 	end
 end
@@ -209,7 +217,7 @@ end
 ---@param on_success fun(usage: AiUsageData)
 ---@param on_error fun() Called after authentication when a usage request fails
 function M.fetch_ai_usage(year, month, on_loading, on_success, on_error)
-	if vim.fn.executable("gh") ~= 1 then
+	if vim.fn.executable("gh") ~= EXECUTABLE_RESULT then
 		return
 	end
 

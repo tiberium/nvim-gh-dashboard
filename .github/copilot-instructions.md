@@ -56,6 +56,11 @@ lazy.nvim/packer locations, so set `PLENARY_PATH` when none of those exist.
 
 ## Repository Conventions
 
+- Avoid magic numbers in Lua. Define a descriptive local constant for every
+  non-obvious numeric value (protocol status, API sentinel, index conversion,
+  layout dimension, threshold, or unit conversion) and use it at every related
+  call site. Leave only self-evident numeric data in tests and user-facing
+  examples as literals.
 - Keep UI-affecting asynchronous work on the main loop. Wrap Plenary HTTP
   callbacks with `vim.schedule_wrap` before touching Neovim state, and always
   stop/close spinner timers on both success and error paths.

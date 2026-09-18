@@ -5,6 +5,10 @@ local buffer_helpers = require("nvim-gh-dashboard.buffer-helpers")
 -- vim.uv is the new name (Neovim >= 0.10), vim.loop is kept for older versions
 local uv = vim.uv or vim.loop
 
+local TIMER_INITIAL_DELAY_MS = 0
+local FIRST_FRAME_INDEX = 1
+local NO_COLUMN_OFFSET = 0
+
 M.spinner_frames = { "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏" }
 M.spinner_interval_ms = 80
 
@@ -15,12 +19,12 @@ M.spinner_interval_ms = 80
 ---@param col_offset number|nil Leading spaces to prepend to each frame, defaults to 0
 ---@return uv.uv_timer_t timer Timer handle; call `M.stop(timer)` to stop it
 function M.start(buf_id, line_idx, message, col_offset)
-	local frame_idx = 1
+	local frame_idx = FIRST_FRAME_INDEX
 	local timer = uv.new_timer()
-	local prefix = string.rep(" ", col_offset or 0)
+	local prefix = string.rep(" ", col_offset or NO_COLUMN_OFFSET)
 
 	timer:start(
-		0,
+		TIMER_INITIAL_DELAY_MS,
 		M.spinner_interval_ms,
 		vim.schedule_wrap(function()
 			if not vim.api.nvim_buf_is_valid(buf_id) then
@@ -31,7 +35,7 @@ function M.start(buf_id, line_idx, message, col_offset)
 			local frame = M.spinner_frames[frame_idx]
 			buffer_helpers.update_line(buf_id, line_idx, prefix .. frame .. " " .. (message or "Loading..."))
 
-			frame_idx = (frame_idx % #M.spinner_frames) + 1
+			frame_idx = (frame_idx % #M.spinner_frames) + FIRST_FRAME_INDEX
 		end)
 	)
 

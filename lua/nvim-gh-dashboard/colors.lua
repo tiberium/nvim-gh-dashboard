@@ -1,5 +1,7 @@
 local M = {}
 
+local GLOBAL_HIGHLIGHT_NAMESPACE = 0
+
 ---Default highlight group definitions.
 ---
 ---Each entry is a table compatible with `vim.api.nvim_set_hl`'s `{val}` argument.
@@ -70,7 +72,7 @@ function M.setup(colors)
 			end
 		end
 
-		vim.api.nvim_set_hl(0, name, definition)
+		vim.api.nvim_set_hl(GLOBAL_HIGHLIGHT_NAMESPACE, name, definition)
 	end
 end
 

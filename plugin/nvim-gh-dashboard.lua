@@ -3,6 +3,9 @@ if vim.g.loaded_nvim_gh_dashboard then
 end
 vim.g.loaded_nvim_gh_dashboard = true
 
+local USERNAME_ARGUMENT_INDEX = 1
+local YEAR_ARGUMENT_INDEX = 2
+
 ---Creates the :GHDashboard user command.
 ---Usage:
 ---  :GHDashboard                    -- uses configured/default username and current year
@@ -12,12 +15,12 @@ vim.api.nvim_create_user_command("GHDashboard", function(cmd_opts)
 	local args = cmd_opts.fargs
 	local setup_opts = {}
 
-	if args[1] then
-		setup_opts.username = args[1]
+	if args[USERNAME_ARGUMENT_INDEX] then
+		setup_opts.username = args[USERNAME_ARGUMENT_INDEX]
 	end
 
-	if args[2] then
-		local year = tonumber(args[2])
+	if args[YEAR_ARGUMENT_INDEX] then
+		local year = tonumber(args[YEAR_ARGUMENT_INDEX])
 		if not year then
 			vim.notify("nvim-gh-dashboard: 'year' argument must be a number", vim.log.levels.ERROR)
 			return

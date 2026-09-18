@@ -16,6 +16,18 @@ M.spinner_interval_ms = Spinner.spinner_interval_ms
 ---Namespace used for all the highlights (colors) applied by this plugin.
 M.namespace = vim.api.nvim_create_namespace("nvim-gh-dashboard")
 
+local CURRENT_WINDOW_ID = 0
+local BUFFER_START_LINE = 0
+local END_OF_BUFFER = -1
+local HIGHLIGHT_TO_END_OF_LINE = -1
+local FIRST_LUA_INDEX = 1
+local NEXT_LINE_OFFSET = 1
+local CENTER_DIVISOR = 2
+local AI_MENU_SHORTCUT_COLUMN_START = 1
+local AI_MENU_SHORTCUT_COLUMN_END = 2
+local AI_MENU_LABEL_COLUMN_START = 4
+local AI_PANEL_SEPARATOR_OFFSET_FROM_BOTTOM = 1
+local CURSOR_COLUMN_INDEX = 2
 local vertical_offset = 5
 local ai_usage_height = 4
 local bottom_empty_lines = 2
@@ -30,7 +42,7 @@ local top_empty_lines = 2
 ---@param width number
 ---@return number
 local function pad_for_width(win_width, width)
-	return math.max(0, math.floor((win_width - width) / 2))
+	return math.max(BUFFER_START_LINE, math.floor((win_width - width) / CENTER_DIVISOR))
 end
 
 ---Computes the horizontal padding needed to center a single line, using
@@ -44,7 +56,7 @@ end
 ---@return number
 local function pad_for_line(win_width, line)
 	if line == "" then
-		return 0
+		return BUFFER_START_LINE
 	end
 	return pad_for_width(win_width, vim.fn.strdisplaywidth(line))
 end
@@ -52,7 +64,7 @@ end
 ---@param lines string[]
 ---@return number
 local function max_width(lines)
-	local width = 0
+	local width = BUFFER_START_LINE
 	for _, line in ipairs(lines) do
 		width = math.max(width, vim.fn.strdisplaywidth(line))
 	end
@@ -63,7 +75,7 @@ end
 ---@param content_height number
 ---@return number
 local function vertical_pad_for(win_height, content_height)
-	return math.max(0, math.floor((win_height - content_height) / 2) - vertical_offset)
+	return math.max(BUFFER_START_LINE, math.floor((win_height - content_height) / CENTER_DIVISOR) - vertical_offset)
 end
 
 ---@param win_width number
@@ -80,7 +92,7 @@ local function append_ai_panel(lines, panel_line_idx, win_width)
 		table.insert(lines, "")
 	end
 	table.insert(lines, separator_for_width(win_width))
-	for _ = 1, ai_usage_height + bottom_empty_lines do
+	for _ = FIRST_LUA_INDEX, ai_usage_height + bottom_empty_lines do
 		table.insert(lines, "")
 	end
 end
@@ -96,7 +108,7 @@ local function apply_horizontal_padding(lines, pads)
 		if line == "" then
 			table.insert(padded, "")
 		else
-			table.insert(padded, string.rep(" ", pads[i] or 0) .. line)
+			table.insert(padded, string.rep(" ", pads[i] or BUFFER_START_LINE) .. line)
 		end
 	end
 	return padded
@@ -141,51 +153,61 @@ function M.get_header_highlights(header_lines)
 	local border_len = #border_char
 
 	for line_idx, line in ipairs(header_lines) do
-		local line0 = line_idx - 1
+		local line0 = line_idx - FIRST_LUA_INDEX
 
 		if line == "[A] AI" then
 			table.insert(highlights, {
 				line = line0,
-				col_start = 1,
-				col_end = 2,
+				col_start = AI_MENU_SHORTCUT_COLUMN_START,
+				col_end = AI_MENU_SHORTCUT_COLUMN_END,
 				hl_group = "GHDashboardMenuShortcut",
 			})
 			table.insert(highlights, {
 				line = line0,
-				col_start = 4,
-				col_end = -1,
+				col_start = AI_MENU_LABEL_COLUMN_START,
+				col_end = HIGHLIGHT_TO_END_OF_LINE,
 				hl_group = "GHDashboardMenuLabel",
 			})
 		elseif line:match("^─+$") or line:match("^[┌└]") then
-			table.insert(
-				highlights,
-				{ line = line0, col_start = 0, col_end = -1, hl_group = "GHDashboardHeaderBorder" }
-			)
+			table.insert(highlights, {
+				line = line0,
+				col_start = BUFFER_START_LINE,
+				col_end = HIGHLIGHT_TO_END_OF_LINE,
+				hl_group = "GHDashboardHeaderBorder",
+			})
 		elseif vim.startswith(line, border_char) then
-			table.insert(
-				highlights,
-				{ line = line0, col_start = 0, col_end = border_len, hl_group = "GHDashboardHeaderBorder" }
-			)
+			table.insert(highlights, {
+				line = line0,
+				col_start = BUFFER_START_LINE,
+				col_end = border_len,
+				hl_group = "GHDashboardHeaderBorder",
+			})
 			table.insert(highlights, {
 				line = line0,
 				col_start = border_len,
 				col_end = #line - border_len,
 				hl_group = "GHDashboardHeaderTitle",
 			})
-			table.insert(
-				highlights,
-				{ line = line0, col_start = #line - border_len, col_end = -1, hl_group = "GHDashboardHeaderBorder" }
-			)
+			table.insert(highlights, {
+				line = line0,
+				col_start = #line - border_len,
+				col_end = HIGHLIGHT_TO_END_OF_LINE,
+				hl_group = "GHDashboardHeaderBorder",
+			})
 		elseif line:match("^%a+:%s") then
 			local _, label_end = line:find("^%a+:%s")
-			table.insert(
-				highlights,
-				{ line = line0, col_start = 0, col_end = label_end, hl_group = "GHDashboardHeaderLabel" }
-			)
-			table.insert(
-				highlights,
-				{ line = line0, col_start = label_end, col_end = -1, hl_group = "GHDashboardHeaderValue" }
-			)
+			table.insert(highlights, {
+				line = line0,
+				col_start = BUFFER_START_LINE,
+				col_end = label_end,
+				hl_group = "GHDashboardHeaderLabel",
+			})
+			table.insert(highlights, {
+				line = line0,
+				col_start = label_end,
+				col_end = HIGHLIGHT_TO_END_OF_LINE,
+				hl_group = "GHDashboardHeaderValue",
+			})
 		end
 	end
 
@@ -207,14 +229,15 @@ function M.apply_highlights(buf_id, highlights, line_offset, col_offset)
 		return
 	end
 
-	line_offset = line_offset or 0
-	col_offset = col_offset or 0
+	line_offset = line_offset or BUFFER_START_LINE
+	col_offset = col_offset or BUFFER_START_LINE
 
 	for _, highlight in ipairs(highlights) do
-		local pad = type(col_offset) == "table" and (col_offset[highlight.line + 1] or 0) or col_offset
+		local pad = type(col_offset) == "table" and (col_offset[highlight.line + FIRST_LUA_INDEX] or BUFFER_START_LINE)
+			or col_offset
 		local col_start = (highlight.col_start or highlight.col) + pad
-		local col_end = highlight.col_end or (col_start + 1)
-		if col_end ~= -1 then
+		local col_end = highlight.col_end or (col_start + NEXT_LINE_OFFSET)
+		if col_end ~= HIGHLIGHT_TO_END_OF_LINE then
 			col_end = col_end + pad
 		end
 
@@ -282,7 +305,7 @@ function M.render_error(buf_id, message)
 	end
 
 	buffer_helpers.with_modifiable_buffer(buf_id, function()
-		vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, {
+		vim.api.nvim_buf_set_lines(buf_id, BUFFER_START_LINE, END_OF_BUFFER, false, {
 			"Failed to load GitHub dashboard:",
 			"",
 			message,
@@ -303,11 +326,11 @@ function M.load_ai_usage(buf_id, chars, panel_line_idx)
 			return
 		end
 
-		spinner_line_idx = panel_line_idx + 1
+		spinner_line_idx = panel_line_idx + NEXT_LINE_OFFSET
 		local spinner_message = "Loading AI usage..."
 		local spinner_pad = pad_for_width(
-			vim.api.nvim_win_get_width(0),
-			vim.fn.strdisplaywidth(Spinner.spinner_frames[1] .. " " .. spinner_message)
+			vim.api.nvim_win_get_width(CURRENT_WINDOW_ID),
+			vim.fn.strdisplaywidth(Spinner.spinner_frames[FIRST_LUA_INDEX] .. " " .. spinner_message)
 		)
 		buffer_helpers.with_modifiable_buffer(buf_id, function()
 			vim.api.nvim_buf_set_lines(
@@ -327,9 +350,9 @@ function M.load_ai_usage(buf_id, chars, panel_line_idx)
 
 		local ai_usage_graph = AiUsageGraph.new(usage, chars)
 		local ai_usage_lines = ai_usage_graph:get_lines()
-		local ai_usage_pad = pad_for_width(vim.api.nvim_win_get_width(0), max_width(ai_usage_lines))
+		local ai_usage_pad = pad_for_width(vim.api.nvim_win_get_width(CURRENT_WINDOW_ID), max_width(ai_usage_lines))
 		local ai_usage_pads = {}
-		for i = 1, #ai_usage_lines do
+		for i = FIRST_LUA_INDEX, #ai_usage_lines do
 			ai_usage_pads[i] = ai_usage_pad
 		end
 
@@ -350,7 +373,7 @@ function M.load_ai_usage(buf_id, chars, panel_line_idx)
 		end
 
 		local message = "Unable to load AI usage."
-		local message_pad = pad_for_line(vim.api.nvim_win_get_width(0), message)
+		local message_pad = pad_for_line(vim.api.nvim_win_get_width(CURRENT_WINDOW_ID), message)
 		buffer_helpers.with_modifiable_buffer(buf_id, function()
 			vim.api.nvim_buf_set_lines(
 				buf_id,
@@ -381,9 +404,12 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 
 	local activity_graph = ActivityGraph.new(activities, year, chars)
 	local activity_graph_lines = activity_graph:get_lines()
-	local win_width = vim.api.nvim_win_get_width(0)
-	local win_height = vim.api.nvim_win_get_height(0)
-	local ai_panel_line_idx = math.max(0, win_height - ai_usage_height - bottom_empty_lines - 1)
+	local win_width = vim.api.nvim_win_get_width(CURRENT_WINDOW_ID)
+	local win_height = vim.api.nvim_win_get_height(CURRENT_WINDOW_ID)
+	local ai_panel_line_idx = math.max(
+		BUFFER_START_LINE,
+		win_height - ai_usage_height - bottom_empty_lines - AI_PANEL_SEPARATOR_OFFSET_FROM_BOTTOM
+	)
 	local header_lines = M.create_header(year, username, win_width)
 
 	-- Combine header and graphs
@@ -417,33 +443,33 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 
 	local contributions_pad = pad_for_width(win_width, max_width(contributions_graph_lines))
 	local contributions_pads = {}
-	for i = 1, #contributions_graph_lines do
+	for i = FIRST_LUA_INDEX, #contributions_graph_lines do
 		contributions_pads[i] = contributions_pad
 	end
 
 	local activity_pad = pad_for_width(win_width, max_width(activity_graph_lines))
 	local activity_pads = {}
-	for i = 1, #activity_graph_lines do
+	for i = FIRST_LUA_INDEX, #activity_graph_lines do
 		activity_pads[i] = activity_pad
 	end
 
 	local dashboard_pads = {}
-	for i = 1, #header_lines do
+	for i = FIRST_LUA_INDEX, #header_lines do
 		dashboard_pads[i] = header_pads[i]
 	end
-	for i = 1, #contributions_graph_lines do
+	for i = FIRST_LUA_INDEX, #contributions_graph_lines do
 		dashboard_pads[#header_lines + i] = contributions_pads[i]
 	end
-	dashboard_pads[#header_lines + #contributions_graph_lines + 1] = 0 -- blank separator
-	for i = 1, #activity_graph_lines do
-		dashboard_pads[#header_lines + #contributions_graph_lines + 1 + i] = activity_pads[i]
+	dashboard_pads[#header_lines + #contributions_graph_lines + NEXT_LINE_OFFSET] = BUFFER_START_LINE
+	for i = FIRST_LUA_INDEX, #activity_graph_lines do
+		dashboard_pads[#header_lines + #contributions_graph_lines + NEXT_LINE_OFFSET + i] = activity_pads[i]
 	end
-	dashboard_pads[#dashboard_lines] = 0 -- trailing blank line for cursor position info
+	dashboard_pads[#dashboard_lines] = BUFFER_START_LINE
 
 	local vertical_pad = top_empty_lines + vertical_pad_for(ai_panel_line_idx, #dashboard_lines)
 
 	local centered_lines = {}
-	for _ = 1, vertical_pad do
+	for _ = FIRST_LUA_INDEX, vertical_pad do
 		table.insert(centered_lines, "")
 	end
 	for _, line in ipairs(apply_horizontal_padding(dashboard_lines, dashboard_pads)) do
@@ -453,20 +479,25 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	append_ai_panel(centered_lines, ai_panel_line_idx, win_width)
 
 	buffer_helpers.with_modifiable_buffer(buf_id, function()
-		vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, centered_lines)
+		vim.api.nvim_buf_set_lines(buf_id, BUFFER_START_LINE, END_OF_BUFFER, false, centered_lines)
 	end)
 
-	vim.api.nvim_buf_clear_namespace(buf_id, M.namespace, 0, -1)
+	vim.api.nvim_buf_clear_namespace(buf_id, M.namespace, BUFFER_START_LINE, END_OF_BUFFER)
 	M.apply_highlights(buf_id, M.get_header_highlights(header_lines), vertical_pad, header_pads)
 	M.apply_highlights(buf_id, contributions_graph:get_highlights(), vertical_pad + #header_lines, contributions_pads)
 	M.apply_highlights(
 		buf_id,
 		activity_graph:get_highlights(),
-		vertical_pad + #header_lines + contributions_graph.height + 1,
+		vertical_pad + #header_lines + contributions_graph.height + NEXT_LINE_OFFSET,
 		activity_pads
 	)
 	M.apply_highlights(buf_id, {
-		{ line = 0, col_start = 0, col_end = -1, hl_group = "GHDashboardSeparator" },
+		{
+			line = BUFFER_START_LINE,
+			col_start = BUFFER_START_LINE,
+			col_end = HIGHLIGHT_TO_END_OF_LINE,
+			hl_group = "GHDashboardSeparator",
+		},
 	}, ai_panel_line_idx)
 
 	-- Set up cursor position tracking (need to adjust height calculation)
@@ -489,9 +520,13 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	})
 	vim.keymap.set("n", "<CR>", function()
 		local current_line = vim.api.nvim_get_current_line()
-		local button_start = current_line:find("[A]", 1, true)
-		local cursor_col = vim.api.nvim_win_get_cursor(0)[2]
-		if button_start and cursor_col >= button_start - 1 and cursor_col < button_start - 1 + #"[A]" then
+		local button_start = current_line:find("[A]", FIRST_LUA_INDEX, true)
+		local cursor_col = vim.api.nvim_win_get_cursor(CURRENT_WINDOW_ID)[CURSOR_COLUMN_INDEX]
+		if
+			button_start
+			and cursor_col >= button_start - FIRST_LUA_INDEX
+			and cursor_col < button_start - FIRST_LUA_INDEX + #"[A]"
+		then
 			request_ai_usage()
 			return ""
 		end
@@ -518,9 +553,12 @@ function M.open_dashboard(username, year, chars)
 	-- Center the header on screen immediately, the same way `render_dashboard`
 	-- centers the final content, so the dashboard doesn't briefly appear in
 	-- the top-left corner while data is still being fetched.
-	local win_width = vim.api.nvim_win_get_width(0)
-	local win_height = vim.api.nvim_win_get_height(0)
-	local ai_panel_line_idx = math.max(0, win_height - ai_usage_height - bottom_empty_lines - 1)
+	local win_width = vim.api.nvim_win_get_width(CURRENT_WINDOW_ID)
+	local win_height = vim.api.nvim_win_get_height(CURRENT_WINDOW_ID)
+	local ai_panel_line_idx = math.max(
+		BUFFER_START_LINE,
+		win_height - ai_usage_height - bottom_empty_lines - AI_PANEL_SEPARATOR_OFFSET_FROM_BOTTOM
+	)
 	local header_lines = M.create_header(year, username, win_width)
 
 	local header_pads = {}
@@ -531,7 +569,7 @@ function M.open_dashboard(username, year, chars)
 	local vertical_pad = top_empty_lines + vertical_pad_for(ai_panel_line_idx, #header_lines)
 
 	local centered_lines = {}
-	for _ = 1, vertical_pad do
+	for _ = FIRST_LUA_INDEX, vertical_pad do
 		table.insert(centered_lines, "")
 	end
 	for _, line in ipairs(apply_horizontal_padding(header_lines, header_pads)) do
@@ -540,18 +578,25 @@ function M.open_dashboard(username, year, chars)
 	append_ai_panel(centered_lines, ai_panel_line_idx, win_width)
 
 	buffer_helpers.with_modifiable_buffer(buf_id, function()
-		vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, centered_lines)
+		vim.api.nvim_buf_set_lines(buf_id, BUFFER_START_LINE, END_OF_BUFFER, false, centered_lines)
 	end)
 	M.apply_highlights(buf_id, M.get_header_highlights(header_lines), vertical_pad, header_pads)
 	M.apply_highlights(buf_id, {
-		{ line = 0, col_start = 0, col_end = -1, hl_group = "GHDashboardSeparator" },
+		{
+			line = BUFFER_START_LINE,
+			col_start = BUFFER_START_LINE,
+			col_end = HIGHLIGHT_TO_END_OF_LINE,
+			hl_group = "GHDashboardSeparator",
+		},
 	}, ai_panel_line_idx)
 
 	-- The header already ends with a blank line; use it to host the spinner
-	local spinner_line_idx = vertical_pad + #header_lines - 1
+	local spinner_line_idx = vertical_pad + #header_lines - NEXT_LINE_OFFSET
 	local spinner_message = "Loading GitHub dashboard..."
-	local spinner_col_offset =
-		pad_for_width(win_width, vim.fn.strdisplaywidth(Spinner.spinner_frames[1] .. " " .. spinner_message))
+	local spinner_col_offset = pad_for_width(
+		win_width,
+		vim.fn.strdisplaywidth(Spinner.spinner_frames[FIRST_LUA_INDEX] .. " " .. spinner_message)
+	)
 	local timer = M.start_spinner(buf_id, spinner_line_idx, spinner_message, spinner_col_offset)
 
 	GithubService.fetch_dashboard_data(username, year, true, function(data)
