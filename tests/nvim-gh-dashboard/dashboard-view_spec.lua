@@ -7,10 +7,11 @@ describe("dashboard-view", function()
 	local default_chars = { filled = "#", high = "@", empty = "." }
 
 	describe("create_header", function()
-		it("includes the AI menu, username, and year", function()
+		it("includes the centered menu, username, and year", function()
 			local lines = DashboardView.create_header(2024, "octocat", 80)
 
 			local joined = table.concat(lines, "\n")
+			assert.matches("%[C%] Contributions", joined)
 			assert.matches("%[A%] AI", joined)
 			assert.equals(string.rep("─", 80), lines[2])
 			assert.matches("User: octocat", joined)
@@ -108,6 +109,7 @@ describe("dashboard-view", function()
 			local joined = table.concat(lines, "\n")
 			assert.matches("User: octocat", joined)
 			assert.matches("%[A%] AI", joined)
+			assert.matches("%[C%] Contributions", joined)
 			assert.same({ "", "" }, { lines[1], lines[2] })
 			assert.equals(0, fetch_ai_usage_calls)
 			assert.is_nil(joined:find("AI Usage", 1, true))
@@ -124,7 +126,7 @@ describe("dashboard-view", function()
 
 			local ai_menu_line
 			for i, line in ipairs(lines) do
-				if line:match("^%s*%[A%] AI%s*$") then
+				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s*$") then
 					ai_menu_line = i
 					break
 				end
@@ -158,6 +160,45 @@ describe("dashboard-view", function()
 			assert.is_true(#lines > 0)
 
 			GithubService.fetch_ai_usage = original_fetch_ai_usage
+			vim.api.nvim_buf_delete(buf_id, { force = true })
+		end)
+
+		it("focuses the contributions graph with C or Enter on the Contributions menu button", function()
+			local Contribution = require("nvim-gh-dashboard.contribution")
+			local buf_id = vim.api.nvim_create_buf(false, true)
+			local contributions = {}
+			for day = 0, 6 do
+				local metadata = ContributionMetadata.new(tostring(day), "0", "5 contributions on January 21.")
+				table.insert(contributions, Contribution.new(metadata))
+			end
+
+			DashboardView.render_dashboard(buf_id, contributions, nil, 2024, "octocat", default_chars)
+
+			local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
+			local menu_line
+			local graph_line
+			for i, line in ipairs(lines) do
+				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s*$") then
+					menu_line = i
+				elseif not graph_line and line:match("^%s*#%s*$") then
+					graph_line = i
+				end
+			end
+			assert.is_not_nil(menu_line)
+			assert.is_not_nil(graph_line)
+
+			local contributions_button_col = lines[menu_line]:find("[C]", 1, true) - 1
+			local graph_col = lines[graph_line]:find("#", 1, true) - 1
+			vim.api.nvim_set_current_buf(buf_id)
+
+			vim.api.nvim_win_set_cursor(0, { menu_line, contributions_button_col })
+			vim.api.nvim_feedkeys("C", "mx", false)
+			assert.same({ graph_line, graph_col }, vim.api.nvim_win_get_cursor(0))
+
+			vim.api.nvim_win_set_cursor(0, { menu_line, contributions_button_col })
+			vim.api.nvim_feedkeys(vim.keycode("<CR>"), "x", false)
+			assert.same({ graph_line, graph_col }, vim.api.nvim_win_get_cursor(0))
+
 			vim.api.nvim_buf_delete(buf_id, { force = true })
 		end)
 	end)
@@ -215,14 +256,46 @@ describe("dashboard-view", function()
 			assert.is_true(vim.api.nvim_buf_is_valid(buf_id))
 			local initial_lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
 			assert.matches("User: octocat", table.concat(initial_lines, "\n"))
+			local initial_menu_line
+			local initial_user_line
+			for i, line in ipairs(initial_lines) do
+				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s*$") then
+					initial_menu_line = i
+				elseif line:match("^%s*User: octocat%s*$") then
+					initial_user_line = i
+				end
+			end
+			assert.is_not_nil(initial_menu_line)
+			assert.same(
+				{ initial_menu_line, initial_lines[initial_menu_line]:find("[C]", 1, true) - 1 },
+				vim.api.nvim_win_get_cursor(0)
+			)
+			assert.is_not_nil(initial_user_line)
 
-			vim.wait(300, function()
+			local dashboard_rendered = vim.wait(300, function()
 				local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
-				return table.concat(lines, "\n"):find("contribution%-day", 1, false) == nil
-					and #vim.tbl_filter(function(l)
-						return l ~= ""
-					end, lines) > 0
+				for _, line in ipairs(lines) do
+					if line:match("^%s*" .. default_chars.filled .. "%s*$") then
+						return true
+					end
+				end
+				return false
 			end)
+			assert.is_true(dashboard_rendered)
+
+			local rendered_lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
+			local rendered_user_line
+			for i, line in ipairs(rendered_lines) do
+				if line:match("^%s*User: octocat%s*$") then
+					rendered_user_line = i
+					break
+				end
+			end
+			assert.equals(initial_user_line, rendered_user_line)
+			assert.same(
+				{ initial_menu_line, initial_lines[initial_menu_line]:find("[C]", 1, true) - 1 },
+				vim.api.nvim_win_get_cursor(0)
+			)
 
 			GithubService.fetch_dashboard_data = original_fetch
 			vim.api.nvim_buf_delete(buf_id, { force = true })
