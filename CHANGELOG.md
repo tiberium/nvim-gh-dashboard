@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.5.0...v1.6.0) (2026-09-18)
+
+
+### Features
+
+* Improve bar diagram colors ([#23](https://github.com/tiberium/nvim-gh-dashboard/issues/23)) ([0037514](https://github.com/tiberium/nvim-gh-dashboard/commit/0037514bb60c86bd0dbb51a2e25d5cb86503144f))
+
 ## [1.5.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.4.0...v1.5.0) (2026-09-18)
 
 
