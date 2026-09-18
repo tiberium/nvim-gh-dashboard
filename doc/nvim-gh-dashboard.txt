@@ -73,9 +73,8 @@ and replaces it with the rendered graphs once the request completes.
 ==============================================================================
 6. Colors                                            *nvim-gh-dashboard-colors*
 
-The contribution graph uses multiple shades of "intensity" (like on
-github.com) and the activity bars, their borders/brackets and the header use
-distinct colors from one another.
+The contribution graph uses multiple shades of intensity. All `BarGraph`
+instances (activity and AI usage) share the `GHDashboardBarGraphFill` color.
 
 Colors are not hard-coded: every highlight group is `link`-ed by default to
 a built-in Neovim highlight group, so the dashboard automatically re-uses
@@ -92,9 +91,9 @@ whatever palette the active colorscheme already defines.
     GHDashboardLevel3               DiagnosticOk          Days with 7-9 contributions
     GHDashboardLevel4               String                Days with 10-99 contributions
     GHDashboardHigh                 DiagnosticWarn (bold) Days with 100+ contributions
+    GHDashboardBarGraphFill         Function              Filled activity and AI bars
     GHDashboardActivityLabel        Identifier            Activity type label
     GHDashboardActivityBorder       NonText               Activity bar `[`/`]` brackets
-    GHDashboardActivityBarFilled    Function              Filled portion of activity bar
     GHDashboardActivityBarEmpty     Comment               Empty portion of activity bar
     GHDashboardActivityPercent      Number                Trailing percentage value
 
@@ -103,10 +102,9 @@ accepted by `nvim_set_hl()`: >lua
     require("nvim-gh-dashboard").setup({
         colors = {
             GHDashboardHigh = { fg = "#ff9e64", bold = true },
-            GHDashboardActivityBarFilled = { link = "DiagnosticOk" },
+            GHDashboardBarGraphFill = { link = "DiagnosticOk" },
         }
     })
 <
 
  vim:tw=78:ts=8:noet:ft=help:norl:
-
