@@ -1,6 +1,11 @@
 local ContributionsGraph = {}
 ContributionsGraph.__index = ContributionsGraph
 
+local DAYS_PER_WEEK = 7
+local FIRST_LUA_INDEX = 1
+local GITHUB_ZERO_BASED_INDEX = 0
+local NO_CONTRIBUTIONS = 0
+
 ---@class ContributionsGraph
 ---@field contributions Contribution[] flat list of contributions from GitHub
 ---@field grid Contribution[][] contributions grouped by week day (1 - 7)
@@ -20,17 +25,17 @@ function ContributionsGraph.new(contributions, year, chars)
 	self.chars = chars
 
 	self.grid = {}
-	for i = 1, 7 do
+	for i = FIRST_LUA_INDEX, DAYS_PER_WEEK do
 		self.grid[i] = vim.tbl_filter(function(contribution)
-			return contribution.weekday_number == i - 1
+			return contribution.weekday_number == i - FIRST_LUA_INDEX
 		end, self.contributions)
 
-		if self.grid[i][1] and self.grid[i][1].week_number ~= 0 then
-			table.insert(self.grid[i], 1, false)
+		if self.grid[i][FIRST_LUA_INDEX] and self.grid[i][FIRST_LUA_INDEX].week_number ~= GITHUB_ZERO_BASED_INDEX then
+			table.insert(self.grid[i], FIRST_LUA_INDEX, false)
 		end
 	end
 
-	self.height = 7 -- 7 as there are 7 days in a week
+	self.height = DAYS_PER_WEEK
 
 	return self
 end
@@ -39,7 +44,7 @@ end
 function ContributionsGraph:get_lines()
 	local lines = {}
 
-	if not self.contributions or #self.contributions < 1 then
+	if not self.contributions or #self.contributions < FIRST_LUA_INDEX then
 		vim.notify("No contributions fetched from GitHub", vim.log.levels.ERROR)
 		return lines
 	end
@@ -50,7 +55,7 @@ function ContributionsGraph:get_lines()
 			if contribution then
 				if string.match(contribution.counter, "+$") ~= nil then
 					day_line = day_line .. self.chars.high
-				elseif tonumber(contribution.counter) > 0 then
+				elseif tonumber(contribution.counter) > NO_CONTRIBUTIONS then
 					day_line = day_line .. self.chars.filled
 				else
 					day_line = day_line .. self.chars.empty
@@ -77,8 +82,8 @@ function ContributionsGraph:get_highlights()
 		for col, contribution in ipairs(self.grid[i]) do
 			if contribution then
 				table.insert(highlights, {
-					line = i - 1,
-					col = col - 1,
+					line = i - FIRST_LUA_INDEX,
+					col = col - FIRST_LUA_INDEX,
 					hl_group = contribution:get_highlight_group(),
 				})
 			end

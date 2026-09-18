@@ -3,6 +3,8 @@ local M = {}
 local DashboardView = require("nvim-gh-dashboard.dashboard-view")
 local Colors = require("nvim-gh-dashboard.colors")
 
+local NO_FILE_ARGUMENTS = 0
+
 ---@param opts table|nil Configuration options
 ---@return number year
 ---@return string username
@@ -39,7 +41,7 @@ function M.setup(opts)
 	local year, username, chars = dashboard_options(opts)
 	Colors.setup(opts and opts.colors)
 
-	if vim.fn.argc() == 0 then
+	if vim.fn.argc() == NO_FILE_ARGUMENTS then
 		DashboardView.open_dashboard(username, year, chars)
 	end
 end

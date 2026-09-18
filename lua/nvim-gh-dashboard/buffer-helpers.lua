@@ -1,5 +1,8 @@
 local M = {}
 
+local NEXT_LINE_OFFSET = 1
+local ERROR_MESSAGE_STACK_LEVEL = 0
+
 ---Temporarily makes buffer modifiable, executes callback, then restores read-only state
 ---@param buf_id number
 ---@param callback function Function to execute while buffer is modifiable
@@ -16,7 +19,7 @@ function M.with_modifiable_buffer(buf_id, callback)
 	vim.bo[buf_id].readonly = true
 
 	if not ok then
-		error(err, 0)
+		error(err, ERROR_MESSAGE_STACK_LEVEL)
 	end
 end
 
@@ -26,7 +29,7 @@ end
 ---@param content string Content to set on the line
 function M.update_line(buf_id, line_idx, content)
 	M.with_modifiable_buffer(buf_id, function()
-		vim.api.nvim_buf_set_lines(buf_id, line_idx, line_idx + 1, false, { content })
+		vim.api.nvim_buf_set_lines(buf_id, line_idx, line_idx + NEXT_LINE_OFFSET, false, { content })
 	end)
 end
 

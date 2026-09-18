@@ -1,6 +1,11 @@
 local Contribution = {}
 Contribution.__index = Contribution
 
+local NO_CONTRIBUTIONS_MAXIMUM = 0
+local LEVEL_ONE_CONTRIBUTIONS_MAXIMUM = 3
+local LEVEL_TWO_CONTRIBUTIONS_MAXIMUM = 6
+local LEVEL_THREE_CONTRIBUTIONS_MAXIMUM = 9
+
 ---@class Contribution
 ---@field counter string -- format: <number>[+]
 ---@field month string -- format: <month> (e.g. "January", "February", ...)
@@ -16,10 +21,10 @@ Contribution.__index = Contribution
 ---highest tier (`is_high`) always use `GHDashboardHigh`, regardless of count.
 ---@type table[]
 Contribution.level_thresholds = {
-	{ max = 0, group = "GHDashboardEmpty" },
-	{ max = 3, group = "GHDashboardLevel1" },
-	{ max = 6, group = "GHDashboardLevel2" },
-	{ max = 9, group = "GHDashboardLevel3" },
+	{ max = NO_CONTRIBUTIONS_MAXIMUM, group = "GHDashboardEmpty" },
+	{ max = LEVEL_ONE_CONTRIBUTIONS_MAXIMUM, group = "GHDashboardLevel1" },
+	{ max = LEVEL_TWO_CONTRIBUTIONS_MAXIMUM, group = "GHDashboardLevel2" },
+	{ max = LEVEL_THREE_CONTRIBUTIONS_MAXIMUM, group = "GHDashboardLevel3" },
 	{ max = math.huge, group = "GHDashboardLevel4" },
 }
 
@@ -40,7 +45,7 @@ function Contribution.new(
 
 	-- unpack contribution
 	local pattern = "(%d+[%+]?) contribution[s]? on (%a+) (%w+)%."
-	local contribution_raw_fixed = self.tooltip:gsub("^No%s", "0 ")
+	local contribution_raw_fixed = self.tooltip:gsub("^No%s", tostring(NO_CONTRIBUTIONS_MAXIMUM) .. " ")
 	local counter, month, day = contribution_raw_fixed:match(pattern)
 
 	-- validate unpacked values
@@ -54,7 +59,7 @@ function Contribution.new(
 	self.day = day
 
 	self.is_high = counter:match("%+$") ~= nil
-	self.count = tonumber((counter:gsub("%+$", ""))) or 0
+	self.count = tonumber((counter:gsub("%+$", ""))) or NO_CONTRIBUTIONS_MAXIMUM
 
 	return self
 end

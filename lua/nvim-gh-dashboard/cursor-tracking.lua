@@ -2,6 +2,15 @@ local M = {}
 
 local buffer_helpers = require("nvim-gh-dashboard.buffer-helpers")
 
+local CURSOR_ROW_INDEX = 1
+local CURSOR_COLUMN_INDEX = 2
+local FIRST_GRAPH_LINE = 1
+local LAST_GRAPH_LINE = 7
+local FIRST_LUA_INDEX = 1
+local FIRST_HIGHLIGHT_COLUMN = 0
+local CURSOR_DETAILS_LINE_OFFSET = 2
+local CENTER_DIVISOR = 2
+
 ---Sets up cursor position tracking for the dashboard buffer
 ---@param buf_id number
 ---@param contributions_graph ContributionsGraph
@@ -28,18 +37,18 @@ end
 ---@return number|nil line ContributionsGraph-local line (1-7), nil if outside graph
 ---@return number col ContriutionsGraph-local column
 function M.get_graph_cursor_position(header_height, horizontal_pad)
-	horizontal_pad = horizontal_pad or 0
+	horizontal_pad = horizontal_pad or FIRST_HIGHLIGHT_COLUMN
 
 	local cursor = vim.api.nvim_win_get_cursor(0)
-	local line_global = cursor[1]
-	local col_global = cursor[2] + 1 -- Convert to 1-based indexing
+	local line_global = cursor[CURSOR_ROW_INDEX]
+	local col_global = cursor[CURSOR_COLUMN_INDEX] + FIRST_LUA_INDEX
 
 	-- Convert global cursor position to local buffer position
 	local line = line_global - header_height
 	local col = col_global - horizontal_pad
 
 	-- Check that cursor is in the graph
-	if line < 1 or line > 7 then
+	if line < FIRST_GRAPH_LINE or line > LAST_GRAPH_LINE then
 		return nil, col
 	end
 
@@ -64,8 +73,13 @@ function M.update_contribution_details(buf_id, contributions_graph, activity_gra
 		end
 	end
 
-	local tooltip_pad = math.max(0, math.floor((vim.api.nvim_win_get_width(0) - vim.fn.strdisplaywidth(tooltip)) / 2))
-	local position_line_idx = total_height + 2
+	local tooltip_pad = math.max(
+		FIRST_HIGHLIGHT_COLUMN,
+		math.floor(
+			(vim.api.nvim_win_get_width(FIRST_HIGHLIGHT_COLUMN) - vim.fn.strdisplaywidth(tooltip)) / CENTER_DIVISOR
+		)
+	)
+	local position_line_idx = total_height + CURSOR_DETAILS_LINE_OFFSET
 	buffer_helpers.update_line(buf_id, position_line_idx, string.rep(" ", tooltip_pad) .. tooltip)
 end
 
