@@ -60,6 +60,21 @@ describe("dashboard-view", function()
 
 			vim.api.nvim_buf_delete(buf_id, { force = true })
 		end)
+
+		it("does not overwrite content after being stopped", function()
+			local buf_id = vim.api.nvim_create_buf(false, true)
+			vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, { "Achievements loaded" })
+
+			local timer = DashboardView.start_spinner(buf_id, 0, "Loading achievements...")
+			DashboardView.stop_spinner(timer)
+
+			vim.wait(100)
+
+			local line = vim.api.nvim_buf_get_lines(buf_id, 0, 1, false)[1]
+			assert.equals("Achievements loaded", line)
+
+			vim.api.nvim_buf_delete(buf_id, { force = true })
+		end)
 	end)
 
 	describe("render_error", function()
@@ -76,6 +91,44 @@ describe("dashboard-view", function()
 	end)
 
 	describe("render_dashboard", function()
+		it("loads achievements above the AI usage separator asynchronously", function()
+			local Contribution = require("nvim-gh-dashboard.contribution")
+			local original_fetch_achievements = GithubService.fetch_achievements
+			local requested_username
+			GithubService.fetch_achievements = function(username, on_success, _)
+				requested_username = username
+				vim.schedule(function()
+					on_success({ "Pull Shark", "YOLO" })
+				end)
+			end
+			local metadata = ContributionMetadata.new("0", "0", "5 contributions on January 21.")
+			local contributions = { Contribution.new(metadata) }
+			local buf_id = vim.api.nvim_create_buf(false, true)
+
+			DashboardView.render_dashboard(buf_id, contributions, nil, 2024, "octocat", default_chars)
+
+			local loaded = vim.wait(300, function()
+				return table
+					.concat(vim.api.nvim_buf_get_lines(buf_id, 0, -1, false), "\n")
+					:find("Pull Shark, YOLO", 1, true) ~= nil
+			end)
+			assert.is_true(loaded)
+			assert.equals("octocat", requested_username)
+			local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
+			local separator = string.rep("─", vim.api.nvim_win_get_width(0))
+			local separator_idx
+			for i, line in ipairs(lines) do
+				if line == separator then
+					separator_idx = i
+				end
+			end
+			assert.is_not_nil(separator_idx)
+			assert.matches("Pull Shark, YOLO", lines[separator_idx - 1])
+
+			GithubService.fetch_achievements = original_fetch_achievements
+			vim.api.nvim_buf_delete(buf_id, { force = true })
+		end)
+
 		it("loads the authenticated AI usage panel after pressing Enter on the AI menu", function()
 			local Contribution = require("nvim-gh-dashboard.contribution")
 			vim.api.nvim_win_set_height(0, 40)
@@ -245,7 +298,7 @@ describe("dashboard-view", function()
 
 			GithubService.fetch_dashboard_data = function(_, _, _, on_success, _)
 				vim.schedule(function()
-					on_success({ contributions = metadata_list, activity = nil })
+					on_success({ contributions = metadata_list, activity = nil, user_page = "" })
 				end)
 			end
 

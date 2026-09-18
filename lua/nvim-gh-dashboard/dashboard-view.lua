@@ -24,6 +24,7 @@ local FIRST_LUA_INDEX = 1
 local NEXT_LINE_OFFSET = 1
 local CENTER_DIVISOR = 2
 local AI_PANEL_SEPARATOR_OFFSET_FROM_BOTTOM = 1
+local ACHIEVEMENTS_LINE_OFFSET_FROM_SEPARATOR = 1
 local CURSOR_COLUMN_INDEX = 2
 local CONTRIBUTIONS_GRAPH_HEIGHT = 7
 local ACTIVITY_GRAPH_HEIGHT = 4
@@ -31,6 +32,7 @@ local GRAPH_SEPARATOR_HEIGHT = 1
 local CURSOR_DETAILS_HEIGHT = 2
 local vertical_offset = 5
 local ai_usage_height = 4
+local achievements_height = 1
 local bottom_empty_lines = 2
 local top_empty_lines = 2
 local MENU_BUTTON_SEPARATOR = "  "
@@ -85,6 +87,45 @@ local function max_width(lines)
 	return width
 end
 
+---Loads achievements from GitHub's full achievements page without blocking the
+---dashboard while the request and parsing complete.
+---@param buf_id number
+---@param username string GitHub username
+---@param achievements_line_idx number 0-based line index
+function M.load_achievements(buf_id, username, achievements_line_idx)
+	local spinner_message = "Loading achievements..."
+	local spinner_pad = pad_for_width(
+		vim.api.nvim_win_get_width(CURRENT_WINDOW_ID),
+		vim.fn.strdisplaywidth(Spinner.spinner_frames[FIRST_LUA_INDEX] .. " " .. spinner_message)
+	)
+	local spinner_timer = M.start_spinner(buf_id, achievements_line_idx, spinner_message, spinner_pad)
+
+	GithubService.fetch_achievements(username, function(achievements)
+		M.stop_spinner(spinner_timer)
+		if not vim.api.nvim_buf_is_valid(buf_id) then
+			return
+		end
+
+		local achievements_line = #achievements > BUFFER_START_LINE and table.concat(achievements, ", ")
+			or "No achievements."
+		local achievements_pad = pad_for_line(vim.api.nvim_win_get_width(CURRENT_WINDOW_ID), achievements_line)
+		buffer_helpers.update_line(
+			buf_id,
+			achievements_line_idx,
+			string.rep(" ", achievements_pad) .. achievements_line
+		)
+	end, function()
+		M.stop_spinner(spinner_timer)
+		if not vim.api.nvim_buf_is_valid(buf_id) then
+			return
+		end
+
+		local message = "Unable to load achievements."
+		local message_pad = pad_for_line(vim.api.nvim_win_get_width(CURRENT_WINDOW_ID), message)
+		buffer_helpers.update_line(buf_id, achievements_line_idx, string.rep(" ", message_pad) .. message)
+	end)
+end
+
 ---@param win_height number
 ---@param content_height number
 ---@return number
@@ -102,9 +143,10 @@ end
 ---@param panel_line_idx number 0-based separator line index
 ---@param win_width number
 local function append_ai_panel(lines, panel_line_idx, win_width)
-	while #lines < panel_line_idx do
+	while #lines < panel_line_idx - ACHIEVEMENTS_LINE_OFFSET_FROM_SEPARATOR do
 		table.insert(lines, "")
 	end
+	table.insert(lines, "")
 	table.insert(lines, separator_for_width(win_width))
 	for _ = FIRST_LUA_INDEX, ai_usage_height + bottom_empty_lines do
 		table.insert(lines, "")
@@ -522,7 +564,7 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	for _, line in ipairs(apply_horizontal_padding(dashboard_lines, dashboard_pads)) do
 		table.insert(centered_lines, line)
 	end
-	ai_panel_line_idx = math.max(ai_panel_line_idx, #centered_lines)
+	ai_panel_line_idx = math.max(ai_panel_line_idx, #centered_lines + achievements_height)
 	append_ai_panel(centered_lines, ai_panel_line_idx, win_width)
 
 	buffer_helpers.with_modifiable_buffer(buf_id, function()
@@ -607,6 +649,7 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 		nowait = true,
 	})
 
+	M.load_achievements(buf_id, username, ai_panel_line_idx - ACHIEVEMENTS_LINE_OFFSET_FROM_SEPARATOR)
 	focus_menu(buf_id, vertical_pad, header_pads[FIRST_LUA_INDEX])
 end
 

@@ -36,6 +36,12 @@ local function build_url(username, year)
 	return url
 end
 
+---@param username string GitHub username
+---@return string url
+local function build_achievements_url(username)
+	return string.format("https://github.com/%s?tab=achievements", username)
+end
+
 ---@param user_page string HTML of the GitHub user page
 ---@return ContributionMetadata[]
 local function parse_contributions(user_page)
@@ -73,6 +79,27 @@ local function parse_activity(user_page)
 end
 
 ---@param user_page string HTML of the GitHub user page
+---@return string[]
+local function parse_achievements(user_page)
+	local achievements = {}
+	local seen = {}
+
+	for image_tag in user_page:gmatch("<img%s+.-%s*/?>") do
+		local achievement_type = image_tag:match('data%-hovercard%-type%s*=%s*"achievement"')
+			or image_tag:match("data%-hovercard%-type%s*=%s*'achievement'")
+		local achievement_name = image_tag:match('alt%s*=%s*"Achievement:%s*(.-)"')
+			or image_tag:match("alt%s*=%s*'Achievement:%s*(.-)'")
+
+		if achievement_type and achievement_name and not seen[achievement_name] then
+			seen[achievement_name] = true
+			table.insert(achievements, achievement_name)
+		end
+	end
+
+	return achievements
+end
+
+---@param user_page string HTML of the GitHub user page
 ---@return DashboardData
 local function parse_dashboard_data(user_page)
 	return {
@@ -83,7 +110,42 @@ end
 
 M.parse_contributions = parse_contributions
 M.parse_activity = parse_activity
+M.parse_achievements = parse_achievements
 M.parse_dashboard_data = parse_dashboard_data
+
+---Parses achievement badges on the next main-loop tick. This lets the dashboard
+---render its graphs and an achievements loader before processing profile HTML.
+---@param user_page string HTML of the GitHub user page
+---@param on_success fun(achievements: string[])
+function M.parse_achievements_async(user_page, on_success)
+	vim.schedule(function()
+		on_success(parse_achievements(user_page))
+	end)
+end
+
+---Fetches the full public achievements page asynchronously. GitHub's
+---contributions XHR response excludes achievement badges, so this endpoint
+---intentionally uses a separate request without the XHR header.
+---@param username string GitHub username
+---@param on_success fun(achievements: string[])
+---@param on_error fun(message: string)
+function M.fetch_achievements(username, on_success, on_error)
+	local curl = require("plenary.curl")
+
+	curl.get(build_achievements_url(username), {
+		callback = vim.schedule_wrap(function(response)
+			if response.status ~= HTTP_OK_STATUS then
+				on_error(string.format("Failed to fetch GitHub achievements (status %s).", tostring(response.status)))
+				return
+			end
+
+			M.parse_achievements_async(response.body, on_success)
+		end),
+		on_error = vim.schedule_wrap(function(err)
+			on_error("Failed to fetch GitHub achievements: " .. (err and err.message or "unknown error"))
+		end),
+	})
+end
 
 ---Fetches the GitHub user page once, asynchronously, and parses both contributions
 ---and activity out of the same response. `on_success`/`on_error` are always invoked
