@@ -31,14 +31,12 @@ M.defaults = {
 	GHDashboardLevel2 = { link = "DiagnosticInfo" },
 	GHDashboardLevel3 = { link = "DiagnosticOk" },
 	GHDashboardLevel4 = { link = "String" },
-	-- 100+ contributions in a single day: intentionally distinct from the
-	-- green scale above so it stands out at a glance.
 	GHDashboardHigh = { link = "DiagnosticWarn", bold = true },
 
-	-- Activity graph (percentage bars)
+	-- Bar graphs
+	GHDashboardBarGraphFill = { link = "Function" },
 	GHDashboardActivityLabel = { link = "Identifier" },
 	GHDashboardActivityBorder = { link = "NonText" },
-	GHDashboardActivityBarFilled = { link = "Function" },
 	GHDashboardActivityBarEmpty = { link = "Comment" },
 	GHDashboardActivityPercent = { link = "Number" },
 
@@ -46,7 +44,6 @@ M.defaults = {
 	GHDashboardAiUsageTitle = { link = "Title" },
 	GHDashboardAiUsageLabel = { link = "Identifier" },
 	GHDashboardAiUsageBorder = { link = "NonText" },
-	GHDashboardAiUsageBar = { link = "DiagnosticWarn" },
 	GHDashboardAiUsageValue = { link = "Number" },
 }
 

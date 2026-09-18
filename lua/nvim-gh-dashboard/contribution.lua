@@ -16,9 +16,6 @@ local LEVEL_THREE_CONTRIBUTIONS_MAXIMUM = 9
 ---@field count number -- numeric contribution count for the day (the `+` suffix, if any, is stripped)
 ---@field is_high boolean -- true when GitHub flagged this as the highest tier (`counter` ends with `+`, i.e. 100+)
 
----Highlight group thresholds for the contribution intensity scale, mirroring
----the multiple shades used on github.com. Days flagged by GitHub as the
----highest tier (`is_high`) always use `GHDashboardHigh`, regardless of count.
 ---@type table[]
 Contribution.level_thresholds = {
 	{ max = NO_CONTRIBUTIONS_MAXIMUM, group = "GHDashboardEmpty" },
@@ -64,10 +61,7 @@ function Contribution.new(
 	return self
 end
 
----Returns the highlight group that best represents this day's contribution
----intensity, mirroring the multiple shades of green used on github.com. Days
----flagged by GitHub as the highest tier (100+ contributions) are always
----rendered with `GHDashboardHigh`, regardless of the exact count.
+---Returns the highlight group for this day's contribution intensity.
 ---@return string
 function Contribution:get_highlight_group()
 	if self.is_high then
