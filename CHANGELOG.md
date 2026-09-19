@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.6.1](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.6.0...v1.6.1) (2026-09-19)
+
+
+### Features
+
+* Add Achivements ([#25](https://github.com/tiberium/nvim-gh-dashboard/issues/25)) ([6188ff5](https://github.com/tiberium/nvim-gh-dashboard/commit/6188ff582189fabec57e24245f08978904eb8300))
+
 ## [1.6.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.5.0...v1.6.0) (2026-09-18)
 
 
