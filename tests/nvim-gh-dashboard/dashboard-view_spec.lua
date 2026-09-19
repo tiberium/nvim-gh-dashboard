@@ -7,7 +7,7 @@ describe("dashboard-view", function()
 	local default_chars = { filled = "#", high = "@", empty = "." }
 
 	describe("create_header", function()
-		it("includes the centered menu, username, and year", function()
+		it("includes the centered menu, user details, and achievements section", function()
 			local lines = DashboardView.create_header(2024, "octocat", 80)
 
 			local joined = table.concat(lines, "\n")
@@ -15,7 +15,10 @@ describe("dashboard-view", function()
 			assert.matches("%[A%] AI", joined)
 			assert.equals(string.rep("─", 80), lines[2])
 			assert.matches("User: octocat", joined)
+			assert.matches("%-%-%-%-%-%-%-%-%-%-achievements%-%-%-%-%-%-%-%-%-%-", joined)
+			assert.matches("Loading achievements%.%.%.", joined)
 			assert.matches("Year: 2024", joined)
+			assert.equals(2, select(2, joined:gsub(string.rep("─", 80), "")))
 		end)
 	end)
 
@@ -60,6 +63,21 @@ describe("dashboard-view", function()
 
 			vim.api.nvim_buf_delete(buf_id, { force = true })
 		end)
+
+		it("does not overwrite content after being stopped", function()
+			local buf_id = vim.api.nvim_create_buf(false, true)
+			vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, { "Achievements loaded" })
+
+			local timer = DashboardView.start_spinner(buf_id, 0, "Loading achievements...")
+			DashboardView.stop_spinner(timer)
+
+			vim.wait(100)
+
+			local line = vim.api.nvim_buf_get_lines(buf_id, 0, 1, false)[1]
+			assert.equals("Achievements loaded", line)
+
+			vim.api.nvim_buf_delete(buf_id, { force = true })
+		end)
 	end)
 
 	describe("render_error", function()
@@ -76,6 +94,103 @@ describe("dashboard-view", function()
 	end)
 
 	describe("render_dashboard", function()
+		it("renders achievement symbols and their cursor description asynchronously", function()
+			local Contribution = require("nvim-gh-dashboard.contribution")
+			local original_fetch_achievements = GithubService.fetch_achievements
+			local requested_username
+			GithubService.fetch_achievements = function(username, on_success, _)
+				requested_username = username
+				vim.schedule(function()
+					on_success({ "Pull Shark", "YOLO" })
+				end)
+			end
+			local metadata = ContributionMetadata.new("0", "0", "5 contributions on January 21.")
+			local contributions = { Contribution.new(metadata) }
+			local buf_id = vim.api.nvim_create_buf(false, true)
+
+			DashboardView.render_dashboard(buf_id, contributions, nil, 2024, "octocat", default_chars, { "%", "&" })
+
+			local loaded = vim.wait(300, function()
+				local rendered = table.concat(vim.api.nvim_buf_get_lines(buf_id, 0, -1, false), "\n")
+				return rendered:find("Loading achievements...", 1, true) == nil
+					and (rendered:find("%%", 1, true) ~= nil or rendered:find("&", 1, true) ~= nil)
+			end)
+			assert.is_true(loaded)
+			assert.equals("octocat", requested_username)
+			local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
+			local user_line_idx
+			local year_line_idx
+			local achievements_title_idx
+			local symbols_line_idx
+			local achievement_separators = 0
+			for i, line in ipairs(lines) do
+				if line:find("User: octocat", 1, true) then
+					user_line_idx = i
+				elseif line:find("Year: 2024", 1, true) then
+					year_line_idx = i
+				elseif line:find("----------achievements----------", 1, true) then
+					achievements_title_idx = i
+				elseif not symbols_line_idx and line:match("^%s*[%&%%][%&%%%s]*$") then
+					symbols_line_idx = i
+				end
+				if line == string.rep("─", vim.api.nvim_win_get_width(0)) then
+					achievement_separators = achievement_separators + 1
+				end
+			end
+			assert.equals(user_line_idx + 1, year_line_idx)
+			assert.equals(year_line_idx + 2, achievements_title_idx)
+			assert.equals(achievements_title_idx + 1, symbols_line_idx)
+			assert.is_true(achievement_separators >= 2)
+
+			local symbol_col = lines[symbols_line_idx]:find("[%&%%]") - 1
+			vim.api.nvim_set_current_buf(buf_id)
+			vim.api.nvim_win_set_cursor(0, { symbols_line_idx, symbol_col })
+			vim.api.nvim_exec_autocmds("CursorMoved", { buffer = buf_id })
+			assert.is_true(vim.wait(300, function()
+				local rendered = table.concat(vim.api.nvim_buf_get_lines(buf_id, 0, -1, false), "\n")
+				return rendered:find("Pull Shark", 1, true) ~= nil or rendered:find("YOLO", 1, true) ~= nil
+			end))
+
+			GithubService.fetch_achievements = original_fetch_achievements
+			vim.api.nvim_buf_delete(buf_id, { force = true })
+		end)
+
+		it("shows an empty achievements message in the symbols line", function()
+			local Contribution = require("nvim-gh-dashboard.contribution")
+			local original_fetch_achievements = GithubService.fetch_achievements
+			GithubService.fetch_achievements = function(_, on_success, _)
+				vim.schedule(function()
+					on_success({})
+				end)
+			end
+			local metadata = ContributionMetadata.new("0", "0", "5 contributions on January 21.")
+			local buf_id = vim.api.nvim_create_buf(false, true)
+
+			DashboardView.render_dashboard(buf_id, { Contribution.new(metadata) }, nil, 2024, "octocat", default_chars)
+
+			assert.is_true(vim.wait(300, function()
+				local rendered = table.concat(vim.api.nvim_buf_get_lines(buf_id, 0, -1, false), "\n")
+				return rendered:find("No achievements.", 1, true) ~= nil
+			end))
+			local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
+			local empty_achievements_line
+			for i, line in ipairs(lines) do
+				if line:find("No achievements.", 1, true) then
+					empty_achievements_line = i
+					break
+				end
+			end
+			assert.is_not_nil(empty_achievements_line)
+
+			vim.api.nvim_set_current_buf(buf_id)
+			vim.api.nvim_feedkeys("V", "mx", false)
+			local empty_message_col = lines[empty_achievements_line]:find("No achievements.", 1, true) - 1
+			assert.same({ empty_achievements_line, empty_message_col }, vim.api.nvim_win_get_cursor(0))
+
+			GithubService.fetch_achievements = original_fetch_achievements
+			vim.api.nvim_buf_delete(buf_id, { force = true })
+		end)
+
 		it("loads the authenticated AI usage panel after pressing Enter on the AI menu", function()
 			local Contribution = require("nvim-gh-dashboard.contribution")
 			vim.api.nvim_win_set_height(0, 40)
@@ -110,6 +225,7 @@ describe("dashboard-view", function()
 			assert.matches("User: octocat", joined)
 			assert.matches("%[A%] AI", joined)
 			assert.matches("%[C%] Contributions", joined)
+			assert.matches("%[V%] Achievements", joined)
 			assert.same({ "", "" }, { lines[1], lines[2] })
 			assert.equals(0, fetch_ai_usage_calls)
 			assert.is_nil(joined:find("AI Usage", 1, true))
@@ -126,7 +242,7 @@ describe("dashboard-view", function()
 
 			local ai_menu_line
 			for i, line in ipairs(lines) do
-				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s*$") then
+				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s+%[V%] Achievements%s*$") then
 					ai_menu_line = i
 					break
 				end
@@ -178,7 +294,7 @@ describe("dashboard-view", function()
 			local menu_line
 			local graph_line
 			for i, line in ipairs(lines) do
-				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s*$") then
+				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s+%[V%] Achievements%s*$") then
 					menu_line = i
 				elseif not graph_line and line:match("^%s*#%s*$") then
 					graph_line = i
@@ -245,7 +361,7 @@ describe("dashboard-view", function()
 
 			GithubService.fetch_dashboard_data = function(_, _, _, on_success, _)
 				vim.schedule(function()
-					on_success({ contributions = metadata_list, activity = nil })
+					on_success({ contributions = metadata_list, activity = nil, user_page = "" })
 				end)
 			end
 
@@ -259,7 +375,7 @@ describe("dashboard-view", function()
 			local initial_menu_line
 			local initial_user_line
 			for i, line in ipairs(initial_lines) do
-				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s*$") then
+				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s+%[V%] Achievements%s*$") then
 					initial_menu_line = i
 				elseif line:match("^%s*User: octocat%s*$") then
 					initial_user_line = i

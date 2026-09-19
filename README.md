@@ -13,6 +13,7 @@ A Neovim plugin that displays GitHub contribution graphs directly in your editor
 - 👤 **ASCII Activity Graph** - Beautiful summary visualization of GitHub activities
 - 🎯 **Interactive Cursor** - Move cursor to see contribution details for specific days
 - 💳 **AI Usage** - Press `A` in the dashboard to load personal Copilot credit and additional-usage budget consumption when `gh` is authenticated
+- 🏆 **Achievements** - Loads public GitHub profile achievements asynchronously
 - ⚙️ **Configurable** - Set custom username and year
 - 🚀 **Fast** - Fetches data directly from GitHub
 - 🎨 **Colorful UI** - Read-only buffer, colored using your current colorscheme's palette, fully customizable
@@ -95,6 +96,7 @@ require("nvim-gh-dashboard").setup({
 | `chars.filled` | `string` | `"#"` | Character for days with contributions |
 | `chars.high` | `string` | `"@"` | Character for days with the highest single-day contribution count, as flagged by GitHub |
 | `chars.empty` | `string` | `"."` | Character for days with no contributions |
+| `achievement_chars` | `string` | `"% ,& ,* ,( ,[ ,? ,! ,+ ,= ,~"` | Up to 10 comma-separated ASCII symbols randomly assigned to achievements |
 | `colors` | `table` | See below | Highlight group overrides, keyed by group name (see [Colors](#colors)) |
 
 ### Colors
@@ -199,6 +201,13 @@ require("nvim-gh-dashboard").setup({
 })
 ```
 
+```lua
+-- Customize achievement symbols (up to 10 comma-separated ASCII characters)
+require("nvim-gh-dashboard").setup({
+  achievement_chars = "%,&,*,(,[,?"
+})
+```
+
 ## Usage
 
 1. **Launch**: Plugin automatically opens when Neovim starts (if configured in your init)
@@ -211,7 +220,7 @@ require("nvim-gh-dashboard").setup({
 
 The plugin:
 1. Fetches contribution data from GitHub's public pages
-2. Parses the HTML to extract contribution information
+2. Parses the HTML to extract contribution information and achievements
 3. Generates an ASCII representation of the contribution graph
 4. Generates an ASCII reporesentation of the activity graph, incase it is available
 4. Displays it in a special Neovim buffer with interactive cursor tracking

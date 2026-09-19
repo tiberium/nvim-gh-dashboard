@@ -27,7 +27,7 @@ function M.start(buf_id, line_idx, message, col_offset)
 		TIMER_INITIAL_DELAY_MS,
 		M.spinner_interval_ms,
 		vim.schedule_wrap(function()
-			if not vim.api.nvim_buf_is_valid(buf_id) then
+			if timer:is_closing() or not vim.api.nvim_buf_is_valid(buf_id) then
 				M.stop(timer)
 				return
 			end
