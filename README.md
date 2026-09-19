@@ -96,6 +96,7 @@ require("nvim-gh-dashboard").setup({
 | `chars.filled` | `string` | `"#"` | Character for days with contributions |
 | `chars.high` | `string` | `"@"` | Character for days with the highest single-day contribution count, as flagged by GitHub |
 | `chars.empty` | `string` | `"."` | Character for days with no contributions |
+| `achievement_chars` | `string` | `"% ,& ,* ,( ,[ ,? ,! ,+ ,= ,~"` | Up to 10 comma-separated ASCII symbols randomly assigned to achievements |
 | `colors` | `table` | See below | Highlight group overrides, keyed by group name (see [Colors](#colors)) |
 
 ### Colors
@@ -197,6 +198,13 @@ require("nvim-gh-dashboard").setup({
     GHDashboardHigh = { fg = "#ff9e64", bold = true },
     GHDashboardBarGraphFill = { link = "DiagnosticOk" },
   }
+})
+```
+
+```lua
+-- Customize achievement symbols (up to 10 comma-separated ASCII characters)
+require("nvim-gh-dashboard").setup({
+  achievement_chars = "%,&,*,(,[,?"
 })
 ```
 
