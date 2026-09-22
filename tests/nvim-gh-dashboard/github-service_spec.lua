@@ -62,13 +62,36 @@ describe("github-service", function()
 
 			local achievements = GithubService.parse_achievements(html)
 
-			assert.same({ "Pull Shark", "YOLO" }, achievements)
+			assert.same({
+				{
+					name = "Pull Shark",
+					details_url = "https://github.com/users/octocat/achievements/pull-shark/detail?hovercard=1",
+				},
+				{
+					name = "YOLO",
+					details_url = "https://github.com/users/octocat/achievements/yolo/detail?hovercard=1",
+				},
+			}, achievements)
 		end)
 
 		it("ignores images that are not achievement badges", function()
 			local html = '<img alt="Achievement: Not a badge"><img data-hovercard-type="achievement" alt="Avatar">'
 
 			assert.same({}, GithubService.parse_achievements(html))
+		end)
+
+		it("extracts the achievement description and unlock date from a hovercard", function()
+			local html = [[
+				<div class="mt-1">You want it? You merge it.</div>
+				<div class="achievement-history-unlocked-at">
+					<relative-time datetime="2024-03-18T12:20:54Z">March 18, 2024</relative-time>
+				</div>
+			]]
+
+			assert.same({
+				description = "You want it? You merge it.",
+				unlocked_at = "2024-03-18T12:20:54Z",
+			}, GithubService.parse_achievement_details(html))
 		end)
 	end)
 
@@ -107,7 +130,16 @@ describe("github-service", function()
 			assert.is_true(vim.wait(200, function()
 				return achievements ~= nil
 			end))
-			assert.same({ "Pull Shark", "YOLO" }, achievements)
+			assert.same({
+				{
+					name = "Pull Shark",
+					details_url = "https://github.com/users/octocat/achievements/pull-shark/detail?hovercard=1",
+				},
+				{
+					name = "YOLO",
+					details_url = "https://github.com/users/octocat/achievements/yolo/detail?hovercard=1",
+				},
+			}, achievements)
 			assert.equals("https://github.com/octocat?tab=achievements", requested_url)
 			assert.is_nil(request_options.headers)
 		end)

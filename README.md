@@ -13,7 +13,7 @@ A Neovim plugin that displays GitHub contribution graphs directly in your editor
 - 👤 **ASCII Activity Graph** - Beautiful summary visualization of GitHub activities
 - 🎯 **Interactive Cursor** - Move cursor to see contribution details for specific days
 - 💳 **AI Usage** - Press `A` in the dashboard to load personal Copilot credit and additional-usage budget consumption when `gh` is authenticated
-- 🏆 **Achievements** - Loads public GitHub profile achievements asynchronously
+- 🏆 **Achievements** - Loads public GitHub profile achievements asynchronously, including unlock dates and descriptions on selection
 - ⚙️ **Configurable** - Set custom username and year
 - 🚀 **Fast** - Fetches data directly from GitHub
 - 🎨 **Colorful UI** - Read-only buffer, colored using your current colorscheme's palette, fully customizable
