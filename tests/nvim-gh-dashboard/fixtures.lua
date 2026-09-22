@@ -38,7 +38,10 @@ function M.page(entries, opts)
 		table.insert(
 			parts,
 			string.format(
-				'<img data-hovercard-type="achievement" alt="Achievement: %s" class="achievement-badge-sidebar">',
+				'<img data-hovercard-type="achievement" '
+					.. 'data-hovercard-url="/users/octocat/achievements/%s/detail?hovercard=1" '
+					.. 'alt="Achievement: %s" class="achievement-badge-sidebar">',
+				achievement:lower():gsub(" ", "-"),
 				achievement
 			)
 		)

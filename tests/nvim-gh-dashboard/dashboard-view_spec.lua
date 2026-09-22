@@ -15,10 +15,10 @@ describe("dashboard-view", function()
 			assert.matches("%[A%] AI", joined)
 			assert.equals(string.rep("─", 80), lines[2])
 			assert.matches("User: octocat", joined)
-			assert.matches("%-%-%-%-%-%-%-%-%-%-achievements%-%-%-%-%-%-%-%-%-%-", joined)
+			assert.matches("achievements", joined)
 			assert.matches("Loading achievements%.%.%.", joined)
 			assert.matches("Year: 2024", joined)
-			assert.equals(2, select(2, joined:gsub(string.rep("─", 80), "")))
+			assert.equals(1, select(2, joined:gsub(string.rep("─", 80), "")))
 		end)
 	end)
 
@@ -97,11 +97,23 @@ describe("dashboard-view", function()
 		it("renders achievement symbols and their cursor description asynchronously", function()
 			local Contribution = require("nvim-gh-dashboard.contribution")
 			local original_fetch_achievements = GithubService.fetch_achievements
+			local original_fetch_achievement_details = GithubService.fetch_achievement_details
 			local requested_username
 			GithubService.fetch_achievements = function(username, on_success, _)
 				requested_username = username
 				vim.schedule(function()
-					on_success({ "Pull Shark", "YOLO" })
+					on_success({
+						{ name = "Pull Shark", details_url = "https://example.test/pull-shark" },
+						{ name = "YOLO", details_url = "https://example.test/yolo" },
+					})
+				end)
+			end
+			GithubService.fetch_achievement_details = function(_, on_success, _)
+				vim.schedule(function()
+					on_success({
+						description = "You want it? You merge it.",
+						unlocked_at = "2024-03-18T12:20:54Z",
+					})
 				end)
 			end
 			local metadata = ContributionMetadata.new("0", "0", "5 contributions on January 21.")
@@ -121,26 +133,22 @@ describe("dashboard-view", function()
 			local user_line_idx
 			local year_line_idx
 			local achievements_title_idx
-			local symbols_line_idx
-			local achievement_separators = 0
 			for i, line in ipairs(lines) do
 				if line:find("User: octocat", 1, true) then
 					user_line_idx = i
 				elseif line:find("Year: 2024", 1, true) then
 					year_line_idx = i
-				elseif line:find("----------achievements----------", 1, true) then
+				elseif line:find("Achievements", 1, true) then
 					achievements_title_idx = i
-				elseif not symbols_line_idx and line:match("^%s*[%&%%][%&%%%s]*$") then
-					symbols_line_idx = i
-				end
-				if line == string.rep("─", vim.api.nvim_win_get_width(0)) then
-					achievement_separators = achievement_separators + 1
 				end
 			end
 			assert.equals(user_line_idx + 1, year_line_idx)
 			assert.equals(year_line_idx + 2, achievements_title_idx)
+			local symbols_line_idx = achievements_title_idx + 1
 			assert.equals(achievements_title_idx + 1, symbols_line_idx)
-			assert.is_true(achievement_separators >= 2)
+			assert.is_true(
+				lines[symbols_line_idx]:find("%", 1, true) ~= nil or lines[symbols_line_idx]:find("&", 1, true) ~= nil
+			)
 
 			local symbol_col = lines[symbols_line_idx]:find("[%&%%]") - 1
 			vim.api.nvim_set_current_buf(buf_id)
@@ -148,10 +156,13 @@ describe("dashboard-view", function()
 			vim.api.nvim_exec_autocmds("CursorMoved", { buffer = buf_id })
 			assert.is_true(vim.wait(300, function()
 				local rendered = table.concat(vim.api.nvim_buf_get_lines(buf_id, 0, -1, false), "\n")
-				return rendered:find("Pull Shark", 1, true) ~= nil or rendered:find("YOLO", 1, true) ~= nil
+				return (rendered:find("Pull Shark", 1, true) ~= nil or rendered:find("YOLO", 1, true) ~= nil)
+					and rendered:find("Unlocked: 2024-03-18T12:20:54Z", 1, true) ~= nil
+					and rendered:find("You want it? You merge it.", 1, true) ~= nil
 			end))
 
 			GithubService.fetch_achievements = original_fetch_achievements
+			GithubService.fetch_achievement_details = original_fetch_achievement_details
 			vim.api.nvim_buf_delete(buf_id, { force = true })
 		end)
 
