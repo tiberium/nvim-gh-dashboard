@@ -1,15 +1,21 @@
 local AiUsageGraph = {}
 AiUsageGraph.__index = AiUsageGraph
 
+local BarGraph = require("nvim-gh-dashboard.bar-graph")
+
 local AI_USAGE_GRAPH_HEIGHT = 4
 local AI_USAGE_BAR_WIDTH = 20
 local AI_USAGE_LABEL_WIDTH = 20
-local AI_USAGE_VALUE_LINE_COUNT = AI_USAGE_GRAPH_HEIGHT - 1
 local CREDITS_PER_DOLLAR = 100
-local FIRST_LUA_INDEX = 1
 local FIRST_HIGHLIGHT_COLUMN = 0
-local BRACKET_WIDTH = 1
 local HIGHLIGHT_TO_END_OF_LINE = -1
+local AI_USAGE_VALUE_SEPARATOR = " "
+local AI_USAGE_BAR_COLORS = {
+	label = "GHDashboardAiUsageLabel",
+	border = "GHDashboardAiUsageBorder",
+	filled = BarGraph.FILLED_HIGHLIGHT_GROUP,
+	value = "GHDashboardAiUsageValue",
+}
 
 ---@class AiUsageData
 ---@field additional_budget_credits number
@@ -27,57 +33,61 @@ function AiUsageGraph.new(usage, chars)
 
 	self.usage = usage
 	self.chars = chars
-	self.char_filled = chars.filled or "#"
-	self.char_empty = chars.empty or "."
 	self.height = AI_USAGE_GRAPH_HEIGHT
+	self.bars = {
+		BarGraph.new({
+			label = "Additional budget",
+			used = usage.additional_credits,
+			total = usage.additional_budget_credits,
+			width = AI_USAGE_BAR_WIDTH,
+			label_width = AI_USAGE_LABEL_WIDTH,
+			value = string.format(
+				"$%.2f / $%.2f",
+				usage.additional_amount,
+				usage.additional_budget_credits / CREDITS_PER_DOLLAR
+			),
+			value_separator = AI_USAGE_VALUE_SEPARATOR,
+			chars = self.chars,
+			colors = AI_USAGE_BAR_COLORS,
+		}),
+		BarGraph.new({
+			label = "Included AI credits",
+			used = usage.included_credits_used,
+			total = usage.included_credits,
+			width = AI_USAGE_BAR_WIDTH,
+			label_width = AI_USAGE_LABEL_WIDTH,
+			value = string.format("%d / %d", usage.included_credits_used, usage.included_credits),
+			value_separator = AI_USAGE_VALUE_SEPARATOR,
+			chars = self.chars,
+			colors = AI_USAGE_BAR_COLORS,
+		}),
+		BarGraph.new({
+			label = "Over-pool AI credits",
+			used = usage.over_pool_credits,
+			total = usage.additional_budget_credits,
+			width = AI_USAGE_BAR_WIDTH,
+			label_width = AI_USAGE_LABEL_WIDTH,
+			value = string.format("%.2f", usage.over_pool_credits),
+			value_separator = AI_USAGE_VALUE_SEPARATOR,
+			chars = self.chars,
+			colors = AI_USAGE_BAR_COLORS,
+		}),
+	}
 
 	return self
 end
 
----@param used number
----@param total number
----@return string
-function AiUsageGraph:render_bar(used, total)
-	local filled = total > FIRST_HIGHLIGHT_COLUMN
-			and math.min(AI_USAGE_BAR_WIDTH, math.ceil((used / total) * AI_USAGE_BAR_WIDTH))
-		or FIRST_HIGHLIGHT_COLUMN
-	return "["
-		.. string.rep(self.char_filled, filled)
-		.. string.rep(self.char_empty, AI_USAGE_BAR_WIDTH - filled)
-		.. "]"
-end
-
 ---@return string[]
 function AiUsageGraph:get_lines()
-	local usage = self.usage
-
-	return {
-		"AI Usage",
-		string.format(
-			"%-20s%s $%.2f / $%.2f",
-			"Additional budget",
-			self:render_bar(usage.additional_credits, usage.additional_budget_credits),
-			usage.additional_amount,
-			usage.additional_budget_credits / CREDITS_PER_DOLLAR
-		),
-		string.format(
-			"%-20s%s %d / %d",
-			"Included AI credits",
-			self:render_bar(usage.included_credits_used, usage.included_credits),
-			usage.included_credits_used,
-			usage.included_credits
-		),
-		string.format(
-			"%-20s%s %.2f",
-			"Over-pool AI credits",
-			self:render_bar(usage.over_pool_credits, usage.additional_budget_credits),
-			usage.over_pool_credits
-		),
-	}
+	local lines = { "AI Usage" }
+	for _, bar in ipairs(self.bars) do
+		table.insert(lines, bar:get_line())
+	end
+	return lines
 end
 
 ---@return table[]
-function AiUsageGraph.get_highlights()
+function AiUsageGraph:get_highlights()
 	local highlights = {
 		{
 			line = FIRST_HIGHLIGHT_COLUMN,
@@ -87,31 +97,8 @@ function AiUsageGraph.get_highlights()
 		},
 	}
 
-	for line = FIRST_LUA_INDEX, AI_USAGE_VALUE_LINE_COUNT do
-		table.insert(highlights, {
-			line = line,
-			col_start = FIRST_HIGHLIGHT_COLUMN,
-			col_end = AI_USAGE_LABEL_WIDTH,
-			hl_group = "GHDashboardAiUsageLabel",
-		})
-		table.insert(highlights, {
-			line = line,
-			col_start = AI_USAGE_LABEL_WIDTH,
-			col_end = AI_USAGE_LABEL_WIDTH + (BRACKET_WIDTH * 2),
-			hl_group = "GHDashboardAiUsageBorder",
-		})
-		table.insert(highlights, {
-			line = line,
-			col_start = AI_USAGE_LABEL_WIDTH + (BRACKET_WIDTH * 2),
-			col_end = AI_USAGE_LABEL_WIDTH + (BRACKET_WIDTH * 2) + AI_USAGE_BAR_WIDTH,
-			hl_group = "GHDashboardAiUsageBar",
-		})
-		table.insert(highlights, {
-			line = line,
-			col_start = AI_USAGE_LABEL_WIDTH + (BRACKET_WIDTH * 2) + AI_USAGE_BAR_WIDTH,
-			col_end = HIGHLIGHT_TO_END_OF_LINE,
-			hl_group = "GHDashboardAiUsageValue",
-		})
+	for line, bar in ipairs(self.bars) do
+		vim.list_extend(highlights, bar:get_highlights(line))
 	end
 
 	return highlights

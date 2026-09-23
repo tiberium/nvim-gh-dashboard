@@ -17,6 +17,22 @@ M.defaults = {
 	GHDashboardHeaderTitle = { link = "Title" },
 	GHDashboardHeaderLabel = { link = "Comment" },
 	GHDashboardHeaderValue = { link = "Identifier" },
+	GHDashboardAchievementsTitle = { link = "DiagnosticInfo", bold = true },
+	GHDashboardAchievementsBorder = { link = "NonText" },
+	GHDashboardAchievementsEmpty = { link = "Comment" },
+	GHDashboardAchievementsError = { link = "DiagnosticError" },
+	GHDashboardAchievementDescription = { link = "Identifier" },
+	GHDashboardAchievementDetails = { link = "Comment" },
+	GHDashboardAchievementSymbol1 = { link = "String", bold = true },
+	GHDashboardAchievementSymbol2 = { link = "Function", bold = true },
+	GHDashboardAchievementSymbol3 = { link = "DiagnosticHint", bold = true },
+	GHDashboardAchievementSymbol4 = { link = "DiagnosticInfo", bold = true },
+	GHDashboardAchievementSymbol5 = { link = "DiagnosticOk", bold = true },
+	GHDashboardAchievementSymbol6 = { link = "DiagnosticWarn", bold = true },
+	GHDashboardAchievementSymbol7 = { link = "Number", bold = true },
+	GHDashboardAchievementSymbol8 = { link = "Constant", bold = true },
+	GHDashboardAchievementSymbol9 = { link = "Special", bold = true },
+	GHDashboardAchievementSymbol10 = { link = "Type", bold = true },
 
 	-- Dashboard menu
 	GHDashboardMenuShortcut = { link = "Function", bold = true },
@@ -31,14 +47,12 @@ M.defaults = {
 	GHDashboardLevel2 = { link = "DiagnosticInfo" },
 	GHDashboardLevel3 = { link = "DiagnosticOk" },
 	GHDashboardLevel4 = { link = "String" },
-	-- 100+ contributions in a single day: intentionally distinct from the
-	-- green scale above so it stands out at a glance.
 	GHDashboardHigh = { link = "DiagnosticWarn", bold = true },
 
-	-- Activity graph (percentage bars)
+	-- Bar graphs
+	GHDashboardBarGraphFill = { link = "Function" },
 	GHDashboardActivityLabel = { link = "Identifier" },
 	GHDashboardActivityBorder = { link = "NonText" },
-	GHDashboardActivityBarFilled = { link = "Function" },
 	GHDashboardActivityBarEmpty = { link = "Comment" },
 	GHDashboardActivityPercent = { link = "Number" },
 
@@ -46,7 +60,6 @@ M.defaults = {
 	GHDashboardAiUsageTitle = { link = "Title" },
 	GHDashboardAiUsageLabel = { link = "Identifier" },
 	GHDashboardAiUsageBorder = { link = "NonText" },
-	GHDashboardAiUsageBar = { link = "DiagnosticWarn" },
 	GHDashboardAiUsageValue = { link = "Number" },
 }
 

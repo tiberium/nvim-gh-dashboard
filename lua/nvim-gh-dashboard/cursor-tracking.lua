@@ -17,7 +17,8 @@ local CENTER_DIVISOR = 2
 ---@param activity_graph ActivityGraph
 ---@param total_height number
 ---@param horizontal_pad number|nil defaults to 0
-function M.setup(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
+---@param graph_start_line number|nil defaults to the pre-reserved-layout graph position
+function M.setup(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad, graph_start_line)
 	-- Create autocommand group for this buffer
 	local group = vim.api.nvim_create_augroup("GHDashboardCursor", { clear = false })
 
@@ -26,7 +27,14 @@ function M.setup(buf_id, contributions_graph, activity_graph, total_height, hori
 		group = group,
 		buffer = buf_id,
 		callback = function()
-			M.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
+			M.update_contribution_details(
+				buf_id,
+				contributions_graph,
+				activity_graph,
+				total_height,
+				horizontal_pad,
+				graph_start_line
+			)
 		end,
 	})
 end
@@ -61,9 +69,17 @@ end
 ---@param activity_graph ActivityGraph
 ---@param total_height number
 ---@param horizontal_pad number|nil defaults to 0
-function M.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
-	local line, col =
-		M.get_graph_cursor_position(total_height - contributions_graph.height - activity_graph.height, horizontal_pad)
+---@param graph_start_line number|nil defaults to the pre-reserved-layout graph position
+function M.update_contribution_details(
+	buf_id,
+	contributions_graph,
+	activity_graph,
+	total_height,
+	horizontal_pad,
+	graph_start_line
+)
+	graph_start_line = graph_start_line or (total_height - contributions_graph.height - activity_graph.height)
+	local line, col = M.get_graph_cursor_position(graph_start_line, horizontal_pad)
 
 	local tooltip = ""
 	if line then

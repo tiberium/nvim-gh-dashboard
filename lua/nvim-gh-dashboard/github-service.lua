@@ -2,6 +2,7 @@ local M = {}
 
 local ContributionMetadata = require("nvim-gh-dashboard.contribution-metadata")
 local ActivityMetadata = require("nvim-gh-dashboard.activity-metadata")
+local AchievementMetadata = require("nvim-gh-dashboard.achievement-metadata")
 
 local HTTP_OK_STATUS = 200
 local DECEMBER = 12
@@ -10,6 +11,13 @@ local SUCCESS_EXIT_CODE = 0
 local JOB_START_FAILURE_MAX_ID = 0
 local EXECUTABLE_RESULT = 1
 local ZERO_CREDITS = 0
+local FIRST_LUA_INDEX = 1
+local GITHUB_BASE_URL = "https://github.com"
+local HOVERCARD_REQUEST_HEADERS = {
+	Accept = "text/html",
+	["X-Requested-With"] = "XMLHttpRequest",
+	["User-Agent"] = "Mozilla/5.0",
+}
 
 ---@class DashboardData
 ---@field contributions ContributionMetadata[]
@@ -34,6 +42,12 @@ local function build_url(username, year)
 	end
 
 	return url
+end
+
+---@param username string GitHub username
+---@return string url
+local function build_achievements_url(username)
+	return string.format("https://github.com/%s?tab=achievements", username)
 end
 
 ---@param user_page string HTML of the GitHub user page
@@ -73,6 +87,51 @@ local function parse_activity(user_page)
 end
 
 ---@param user_page string HTML of the GitHub user page
+---@return AchievementMetadata[]
+local function parse_achievements(user_page)
+	local achievements = {}
+	local seen = {}
+
+	for image_tag in user_page:gmatch("<img%s+.-%s*/?>") do
+		local achievement_type = image_tag:match('data%-hovercard%-type%s*=%s*"achievement"')
+			or image_tag:match("data%-hovercard%-type%s*=%s*'achievement'")
+		local achievement_name = image_tag:match('alt%s*=%s*"Achievement:%s*(.-)"')
+			or image_tag:match("alt%s*=%s*'Achievement:%s*(.-)'")
+		local details_path = image_tag:match('data%-hovercard%-url%s*=%s*"([^"]+)"')
+			or image_tag:match("data%-hovercard%-url%s*=%s*'([^']+)'")
+
+		if achievement_type and achievement_name and details_path and not seen[achievement_name] then
+			seen[achievement_name] = true
+			table.insert(achievements, AchievementMetadata.new(achievement_name, GITHUB_BASE_URL .. details_path))
+		end
+	end
+
+	return achievements
+end
+
+---@param html string
+---@return string
+local function plain_text(html)
+	return html:gsub("<[^>]->", ""):gsub("&amp;", "&"):gsub("&quot;", '"'):gsub("%s+", " "):match("^%s*(.-)%s*$")
+end
+
+---@param achievement_page string HTML of an achievement hovercard
+---@return { description: string|nil, unlocked_at: string|nil }
+local function parse_achievement_details(achievement_page)
+	local description_html = achievement_page:match('<div[^>]-class="mt%-1"[^>]*>%s*(.-)%s*</div>')
+	local unlocked_section_start = achievement_page:find("achievement-history-unlocked-at", FIRST_LUA_INDEX, true)
+	local unlocked_at
+	if unlocked_section_start then
+		unlocked_at = achievement_page:sub(unlocked_section_start):match('<relative%-time%s+[^>]-datetime="([^"]+)"')
+	end
+
+	return {
+		description = description_html and plain_text(description_html) or nil,
+		unlocked_at = unlocked_at,
+	}
+end
+
+---@param user_page string HTML of the GitHub user page
 ---@return DashboardData
 local function parse_dashboard_data(user_page)
 	return {
@@ -83,7 +142,66 @@ end
 
 M.parse_contributions = parse_contributions
 M.parse_activity = parse_activity
+M.parse_achievements = parse_achievements
+M.parse_achievement_details = parse_achievement_details
 M.parse_dashboard_data = parse_dashboard_data
+
+---Parses achievement badges on the next main-loop tick. This lets the dashboard
+---render its graphs and an achievements loader before processing profile HTML.
+---@param user_page string HTML of the GitHub user page
+---@param on_success fun(achievements: AchievementMetadata[])
+function M.parse_achievements_async(user_page, on_success)
+	vim.schedule(function()
+		on_success(parse_achievements(user_page))
+	end)
+end
+
+---Fetches the details displayed by GitHub's achievement hovercard.
+---@param details_url string
+---@param on_success fun(details: { description: string|nil, unlocked_at: string|nil })
+---@param on_error fun(message: string)
+function M.fetch_achievement_details(details_url, on_success, on_error)
+	local curl = require("plenary.curl")
+
+	curl.get(details_url, {
+		headers = HOVERCARD_REQUEST_HEADERS,
+		callback = vim.schedule_wrap(function(response)
+			if response.status ~= HTTP_OK_STATUS then
+				on_error(string.format("Failed to fetch achievement details (status %s).", tostring(response.status)))
+				return
+			end
+
+			on_success(parse_achievement_details(response.body))
+		end),
+		on_error = vim.schedule_wrap(function(err)
+			on_error("Failed to fetch achievement details: " .. (err and err.message or "unknown error"))
+		end),
+	})
+end
+
+---Fetches the full public achievements page asynchronously. GitHub's
+---contributions XHR response excludes achievement badges, so this endpoint
+---intentionally uses a separate request without the XHR header.
+---@param username string GitHub username
+---@param on_success fun(achievements: string[])
+---@param on_error fun(message: string)
+function M.fetch_achievements(username, on_success, on_error)
+	local curl = require("plenary.curl")
+
+	curl.get(build_achievements_url(username), {
+		callback = vim.schedule_wrap(function(response)
+			if response.status ~= HTTP_OK_STATUS then
+				on_error(string.format("Failed to fetch GitHub achievements (status %s).", tostring(response.status)))
+				return
+			end
+
+			M.parse_achievements_async(response.body, on_success)
+		end),
+		on_error = vim.schedule_wrap(function(err)
+			on_error("Failed to fetch GitHub achievements: " .. (err and err.message or "unknown error"))
+		end),
+	})
+end
 
 ---Fetches the GitHub user page once, asynchronously, and parses both contributions
 ---and activity out of the same response. `on_success`/`on_error` are always invoked

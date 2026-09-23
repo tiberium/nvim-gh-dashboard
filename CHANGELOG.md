@@ -1,5 +1,33 @@
 # Changelog
 
+## [1.7.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.6.1...v1.7.0) (2026-09-22)
+
+
+### Features
+
+* Add achivements details ([#27](https://github.com/tiberium/nvim-gh-dashboard/issues/27)) ([7487f33](https://github.com/tiberium/nvim-gh-dashboard/commit/7487f3330154872a5f432740c42c78a34f391614))
+
+## [1.6.1](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.6.0...v1.6.1) (2026-09-19)
+
+
+### Features
+
+* Add Achivements ([#25](https://github.com/tiberium/nvim-gh-dashboard/issues/25)) ([6188ff5](https://github.com/tiberium/nvim-gh-dashboard/commit/6188ff582189fabec57e24245f08978904eb8300))
+
+## [1.6.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.5.0...v1.6.0) (2026-09-18)
+
+
+### Features
+
+* Improve bar diagram colors ([#23](https://github.com/tiberium/nvim-gh-dashboard/issues/23)) ([0037514](https://github.com/tiberium/nvim-gh-dashboard/commit/0037514bb60c86bd0dbb51a2e25d5cb86503144f))
+
+## [1.5.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.4.0...v1.5.0) (2026-09-18)
+
+
+### Features
+
+* Setup initial coursor position ([#21](https://github.com/tiberium/nvim-gh-dashboard/issues/21)) ([48bcd8e](https://github.com/tiberium/nvim-gh-dashboard/commit/48bcd8e8997fba96e65015859e5061613c1bfd65))
+
 ## [1.4.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.3.0...v1.4.0) (2026-09-18)
 
 

@@ -13,6 +13,7 @@ A Neovim plugin that displays GitHub contribution graphs directly in your editor
 - 👤 **ASCII Activity Graph** - Beautiful summary visualization of GitHub activities
 - 🎯 **Interactive Cursor** - Move cursor to see contribution details for specific days
 - 💳 **AI Usage** - Press `A` in the dashboard to load personal Copilot credit and additional-usage budget consumption when `gh` is authenticated
+- 🏆 **Achievements** - Loads public GitHub profile achievements asynchronously, including unlock dates and descriptions on selection
 - ⚙️ **Configurable** - Set custom username and year
 - 🚀 **Fast** - Fetches data directly from GitHub
 - 🎨 **Colorful UI** - Read-only buffer, colored using your current colorscheme's palette, fully customizable
@@ -95,14 +96,13 @@ require("nvim-gh-dashboard").setup({
 | `chars.filled` | `string` | `"#"` | Character for days with contributions |
 | `chars.high` | `string` | `"@"` | Character for days with the highest single-day contribution count, as flagged by GitHub |
 | `chars.empty` | `string` | `"."` | Character for days with no contributions |
+| `achievement_chars` | `string` | `"% ,& ,* ,( ,[ ,? ,! ,+ ,= ,~"` | Up to 10 comma-separated ASCII symbols randomly assigned to achievements |
 | `colors` | `table` | See below | Highlight group overrides, keyed by group name (see [Colors](#colors)) |
 
 ### Colors
 
-Just like on github.com, the contribution graph is rendered with multiple
-shades of "intensity" and the activity bars, their borders/brackets and the
-header use distinct colors from one another, so everything is easy to tell
-apart at a glance.
+The contribution graph uses multiple shades of intensity. All `BarGraph`
+instances (activity and AI usage) share the `GHDashboardBarGraphFill` color.
 
 Colors are **not** hard-coded: every highlight group used by the plugin is
 `link`-ed by default to a built-in Neovim highlight group (`String`, `Title`,
@@ -121,10 +121,10 @@ palette plugin is required.
 | `GHDashboardLevel2` | `DiagnosticInfo` | Days with 4-6 contributions |
 | `GHDashboardLevel3` | `DiagnosticOk` | Days with 7-9 contributions |
 | `GHDashboardLevel4` | `String` | Days with 10-99 contributions |
-| `GHDashboardHigh` | `DiagnosticWarn` (bold) | Days with **100+ contributions**, as flagged by GitHub - intentionally distinct from the green scale above so your best days stand out |
+| `GHDashboardHigh` | `DiagnosticWarn` (bold) | Days with 100+ contributions |
+| `GHDashboardBarGraphFill` | `Function` | Filled activity and AI Usage bars |
 | `GHDashboardActivityLabel` | `Identifier` | The activity type label (`commits`, `issues`, ...) |
 | `GHDashboardActivityBorder` | `NonText` | The `[`/`]` brackets around each activity bar |
-| `GHDashboardActivityBarFilled` | `Function` | The filled portion of an activity bar |
 | `GHDashboardActivityBarEmpty` | `Comment` | The empty portion of an activity bar |
 | `GHDashboardActivityPercent` | `Number` | The trailing percentage value |
 | `GHDashboardMenuShortcut` | `Function` (bold) | The menu shortcut, such as `A` in `[A] AI` |
@@ -133,7 +133,6 @@ palette plugin is required.
 | `GHDashboardAiUsageTitle` | `Title` | The AI Usage section heading |
 | `GHDashboardAiUsageLabel` | `Identifier` | Labels in AI Usage graphs |
 | `GHDashboardAiUsageBorder` | `NonText` | The `[`/`]` brackets around AI Usage bars |
-| `GHDashboardAiUsageBar` | `DiagnosticWarn` | Filled AI Usage bar portions |
 | `GHDashboardAiUsageValue` | `Number` | AI Usage amounts and remaining budget |
 
 Every group can be overridden through `opts.colors`, using the same shape
@@ -146,8 +145,7 @@ require("nvim-gh-dashboard").setup({
   colors = {
     -- Use explicit colors instead of linking to the colorscheme
     GHDashboardHigh = { fg = "#ff9e64", bold = true },
-    -- Link to a different highlight group
-    GHDashboardActivityBarFilled = { link = "DiagnosticOk" },
+    GHDashboardBarGraphFill = { link = "DiagnosticOk" },
   }
 })
 ```
@@ -197,9 +195,16 @@ require("nvim-gh-dashboard").setup({
 require("nvim-gh-dashboard").setup({
   username = "octocat",
   colors = {
-    GHDashboardHigh = { fg = "#ff9e64", bold = true }, -- 100+ contributions
-    GHDashboardActivityBarFilled = { link = "DiagnosticOk" },
+    GHDashboardHigh = { fg = "#ff9e64", bold = true },
+    GHDashboardBarGraphFill = { link = "DiagnosticOk" },
   }
+})
+```
+
+```lua
+-- Customize achievement symbols (up to 10 comma-separated ASCII characters)
+require("nvim-gh-dashboard").setup({
+  achievement_chars = "%,&,*,(,[,?"
 })
 ```
 
@@ -215,7 +220,7 @@ require("nvim-gh-dashboard").setup({
 
 The plugin:
 1. Fetches contribution data from GitHub's public pages
-2. Parses the HTML to extract contribution information
+2. Parses the HTML to extract contribution information and achievements
 3. Generates an ASCII representation of the contribution graph
 4. Generates an ASCII reporesentation of the activity graph, incase it is available
 4. Displays it in a special Neovim buffer with interactive cursor tracking
@@ -226,8 +231,9 @@ The plugin:
 - `@` - Days with 100+ contributions  
 - `.` - Days with no contributions
 
-*Note: Characters can be customized via the `chars` configuration option. Colors are also applied per
-intensity level; see [Colors](#colors) for the full list of highlight groups and how to customize them.*
+*Note: Characters can be customized via the `chars` configuration option. See
+[Colors](#colors) for the full list of highlight groups and how to customize
+them.*
 
 ## Troubleshooting
 

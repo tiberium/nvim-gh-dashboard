@@ -23,15 +23,55 @@ local HIGHLIGHT_TO_END_OF_LINE = -1
 local FIRST_LUA_INDEX = 1
 local NEXT_LINE_OFFSET = 1
 local CENTER_DIVISOR = 2
-local AI_MENU_SHORTCUT_COLUMN_START = 1
-local AI_MENU_SHORTCUT_COLUMN_END = 2
-local AI_MENU_LABEL_COLUMN_START = 4
 local AI_PANEL_SEPARATOR_OFFSET_FROM_BOTTOM = 1
 local CURSOR_COLUMN_INDEX = 2
+local CONTRIBUTIONS_GRAPH_HEIGHT = 7
+local ACTIVITY_GRAPH_HEIGHT = 4
+local GRAPH_SEPARATOR_HEIGHT = 1
+local CURSOR_DETAILS_HEIGHT = 2
 local vertical_offset = 5
 local ai_usage_height = 4
 local bottom_empty_lines = 2
 local top_empty_lines = 2
+local ACHIEVEMENTS_TITLE = "Achievements"
+local ACHIEVEMENTS_LOADING_MESSAGE = "Loading achievements..."
+local ACHIEVEMENTS_EMPTY_MESSAGE = "No achievements."
+local ACHIEVEMENTS_ERROR_MESSAGE = "Unable to load achievements."
+local ACHIEVEMENT_DETAILS_LOADING_MESSAGE = "Loading achievement details..."
+local ACHIEVEMENT_UNLOCKED_PREFIX = "Unlocked: "
+local ACHIEVEMENTS_SYMBOL_SEPARATOR = " "
+local ACHIEVEMENTS_CURSOR_GROUP = "GHDashboardAchievementsCursor"
+local ACHIEVEMENTS_SYMBOLS_OFFSET_FROM_TITLE = 1
+local ACHIEVEMENT_NAME_OFFSET_FROM_SYMBOLS = 1
+local ACHIEVEMENT_UNLOCKED_OFFSET_FROM_NAME = 1
+local ACHIEVEMENT_DESCRIPTION_OFFSET_FROM_UNLOCKED = 1
+local DEFAULT_ACHIEVEMENT_CHARS = { "%", "&", "*", "(", "[", "?", "!", "+", "=", "~" }
+local ACHIEVEMENT_SYMBOL_HIGHLIGHT_GROUPS = {
+	"GHDashboardAchievementSymbol1",
+	"GHDashboardAchievementSymbol2",
+	"GHDashboardAchievementSymbol3",
+	"GHDashboardAchievementSymbol4",
+	"GHDashboardAchievementSymbol5",
+	"GHDashboardAchievementSymbol6",
+	"GHDashboardAchievementSymbol7",
+	"GHDashboardAchievementSymbol8",
+	"GHDashboardAchievementSymbol9",
+	"GHDashboardAchievementSymbol10",
+}
+local MENU_BUTTON_SEPARATOR = "  "
+local MENU_BUTTONS = {
+	{ shortcut = "C", label = "Contributions" },
+	{ shortcut = "A", label = "AI" },
+	{ shortcut = "V", label = "Achievements" },
+}
+
+local function menu_line()
+	local buttons = {}
+	for _, button in ipairs(MENU_BUTTONS) do
+		table.insert(buttons, "[" .. button.shortcut .. "] " .. button.label)
+	end
+	return table.concat(buttons, MENU_BUTTON_SEPARATOR)
+end
 
 -- Centering helpers shared by `render_dashboard` (header + graphs) and
 -- `open_dashboard` (header-only, while the spinner is showing), so that the
@@ -71,6 +111,200 @@ local function max_width(lines)
 	return width
 end
 
+---@param header_lines string[]
+---@return { symbols: number, name: number, unlocked: number, description: number } 0-based line offsets
+local function achievement_line_offsets(header_lines)
+	for line_idx, line in ipairs(header_lines) do
+		if line == ACHIEVEMENTS_TITLE then
+			local title_line_offset = line_idx - FIRST_LUA_INDEX
+			local symbols_line_offset = title_line_offset + ACHIEVEMENTS_SYMBOLS_OFFSET_FROM_TITLE
+			local name_line_offset = symbols_line_offset + ACHIEVEMENT_NAME_OFFSET_FROM_SYMBOLS
+			local unlocked_line_offset = name_line_offset + ACHIEVEMENT_UNLOCKED_OFFSET_FROM_NAME
+			return {
+				symbols = symbols_line_offset,
+				name = name_line_offset,
+				unlocked = unlocked_line_offset,
+				description = unlocked_line_offset + ACHIEVEMENT_DESCRIPTION_OFFSET_FROM_UNLOCKED,
+			}
+		end
+	end
+
+	error("Achievements section is missing from the dashboard header.")
+end
+
+---@return string[] shuffled highlight groups
+local function shuffled_achievement_highlight_groups()
+	local groups = vim.deepcopy(ACHIEVEMENT_SYMBOL_HIGHLIGHT_GROUPS)
+	for index = #groups, FIRST_LUA_INDEX + NEXT_LINE_OFFSET, -NEXT_LINE_OFFSET do
+		local swap_index = math.random(index)
+		groups[index], groups[swap_index] = groups[swap_index], groups[index]
+	end
+	return groups
+end
+
+---Loads achievements from GitHub's full achievements page without blocking the
+---dashboard while the request and parsing complete.
+---@param buf_id number
+---@param username string GitHub username
+---@param achievements_line_idx number 0-based line index
+function M.load_achievements(
+	buf_id,
+	username,
+	achievement_symbols_line_idx,
+	achievement_name_line_idx,
+	achievement_unlocked_line_idx,
+	achievement_description_line_idx,
+	chars
+)
+	GithubService.fetch_achievements(username, function(achievements)
+		if not vim.api.nvim_buf_is_valid(buf_id) then
+			return
+		end
+
+		if #achievements == BUFFER_START_LINE then
+			local empty_pad = pad_for_line(vim.api.nvim_win_get_width(CURRENT_WINDOW_ID), ACHIEVEMENTS_EMPTY_MESSAGE)
+			buffer_helpers.update_line(
+				buf_id,
+				achievement_symbols_line_idx,
+				string.rep(" ", empty_pad) .. ACHIEVEMENTS_EMPTY_MESSAGE
+			)
+			M.apply_highlights(buf_id, {
+				{
+					line = BUFFER_START_LINE,
+					col_start = BUFFER_START_LINE,
+					col_end = HIGHLIGHT_TO_END_OF_LINE,
+					hl_group = "GHDashboardAchievementsEmpty",
+				},
+			}, achievement_symbols_line_idx, empty_pad)
+			return
+		end
+
+		local symbols = {}
+		local achievement_columns = {}
+		local symbol_highlight_groups = shuffled_achievement_highlight_groups()
+		local symbol_highlights = {}
+		for index, achievement in ipairs(achievements) do
+			local symbol = chars[math.random(#chars)]
+			table.insert(symbols, symbol)
+			achievement_columns[index] = {
+				achievement = achievement,
+				column = (index - FIRST_LUA_INDEX) * (#ACHIEVEMENTS_SYMBOL_SEPARATOR + #symbol),
+			}
+			table.insert(symbol_highlights, {
+				line = BUFFER_START_LINE,
+				col_start = achievement_columns[index].column,
+				col_end = achievement_columns[index].column + #symbol,
+				hl_group = symbol_highlight_groups[((index - FIRST_LUA_INDEX) % #symbol_highlight_groups) + FIRST_LUA_INDEX],
+			})
+		end
+
+		local symbols_line = table.concat(symbols, ACHIEVEMENTS_SYMBOL_SEPARATOR)
+		local symbols_pad = pad_for_line(vim.api.nvim_win_get_width(CURRENT_WINDOW_ID), symbols_line)
+		buffer_helpers.update_line(buf_id, achievement_symbols_line_idx, string.rep(" ", symbols_pad) .. symbols_line)
+		M.apply_highlights(buf_id, symbol_highlights, achievement_symbols_line_idx, symbols_pad)
+
+		local group = vim.api.nvim_create_augroup(ACHIEVEMENTS_CURSOR_GROUP, { clear = false })
+		local achievement_details = {}
+		local selected_achievement
+		local function update_detail_line(line_idx, text, hl_group)
+			local pad = pad_for_line(vim.api.nvim_win_get_width(CURRENT_WINDOW_ID), text)
+			buffer_helpers.update_line(buf_id, line_idx, string.rep(" ", pad) .. text)
+			M.apply_highlights(buf_id, {
+				{
+					line = BUFFER_START_LINE,
+					col_start = BUFFER_START_LINE,
+					col_end = HIGHLIGHT_TO_END_OF_LINE,
+					hl_group = hl_group,
+				},
+			}, line_idx, pad)
+		end
+
+		local function show_achievement_details(achievement)
+			local details = achievement_details[achievement.details_url]
+			if details then
+				update_detail_line(
+					achievement_unlocked_line_idx,
+					details.unlocked_at and ACHIEVEMENT_UNLOCKED_PREFIX .. details.unlocked_at or "",
+					"GHDashboardAchievementDetails"
+				)
+				update_detail_line(
+					achievement_description_line_idx,
+					details.description or "",
+					"GHDashboardAchievementDetails"
+				)
+				return
+			end
+
+			update_detail_line(
+				achievement_unlocked_line_idx,
+				ACHIEVEMENT_DETAILS_LOADING_MESSAGE,
+				"GHDashboardAchievementDetails"
+			)
+			update_detail_line(achievement_description_line_idx, "", "GHDashboardAchievementDetails")
+			GithubService.fetch_achievement_details(achievement.details_url, function(fetched_details)
+				achievement_details[achievement.details_url] = fetched_details
+				if selected_achievement == achievement then
+					show_achievement_details(achievement)
+				end
+			end, function()
+				if selected_achievement == achievement then
+					update_detail_line(achievement_unlocked_line_idx, "", "GHDashboardAchievementDetails")
+				end
+			end)
+		end
+
+		vim.api.nvim_create_autocmd("CursorMoved", {
+			group = group,
+			buffer = buf_id,
+			callback = function()
+				local cursor = vim.api.nvim_win_get_cursor(CURRENT_WINDOW_ID)
+				local achievement
+				if cursor[FIRST_LUA_INDEX] == achievement_symbols_line_idx + FIRST_LUA_INDEX then
+					local local_column = cursor[CURSOR_COLUMN_INDEX] - symbols_pad
+					for _, item in ipairs(achievement_columns) do
+						if local_column == item.column then
+							achievement = item.achievement
+							break
+						end
+					end
+				end
+
+				selected_achievement = achievement
+				update_detail_line(
+					achievement_name_line_idx,
+					achievement and achievement.name or "",
+					"GHDashboardAchievementDescription"
+				)
+				if achievement then
+					show_achievement_details(achievement)
+				else
+					update_detail_line(achievement_unlocked_line_idx, "", "GHDashboardAchievementDetails")
+					update_detail_line(achievement_description_line_idx, "", "GHDashboardAchievementDetails")
+				end
+			end,
+		})
+	end, function()
+		if not vim.api.nvim_buf_is_valid(buf_id) then
+			return
+		end
+
+		local message_pad = pad_for_line(vim.api.nvim_win_get_width(CURRENT_WINDOW_ID), ACHIEVEMENTS_ERROR_MESSAGE)
+		buffer_helpers.update_line(
+			buf_id,
+			achievement_symbols_line_idx,
+			string.rep(" ", message_pad) .. ACHIEVEMENTS_ERROR_MESSAGE
+		)
+		M.apply_highlights(buf_id, {
+			{
+				line = BUFFER_START_LINE,
+				col_start = BUFFER_START_LINE,
+				col_end = HIGHLIGHT_TO_END_OF_LINE,
+				hl_group = "GHDashboardAchievementsError",
+			},
+		}, achievement_symbols_line_idx, message_pad)
+	end)
+end
+
 ---@param win_height number
 ---@param content_height number
 ---@return number
@@ -97,6 +331,28 @@ local function append_ai_panel(lines, panel_line_idx, win_width)
 	end
 end
 
+---@param lines string[]
+---@param section_lines string[]
+---@param reserved_height number
+local function append_section(lines, section_lines, reserved_height)
+	for _, line in ipairs(section_lines) do
+		table.insert(lines, line)
+	end
+	for _ = #section_lines + FIRST_LUA_INDEX, reserved_height do
+		table.insert(lines, "")
+	end
+end
+
+---@param header_height number
+---@return number
+local function dashboard_content_height(header_height)
+	return header_height
+		+ CONTRIBUTIONS_GRAPH_HEIGHT
+		+ GRAPH_SEPARATOR_HEIGHT
+		+ ACTIVITY_GRAPH_HEIGHT
+		+ CURSOR_DETAILS_HEIGHT
+end
+
 ---Prepends the given per-line paddings to each line (skipping blanks, see
 ---`pad_for_line`).
 ---@param lines string[]
@@ -114,6 +370,16 @@ local function apply_horizontal_padding(lines, pads)
 	return padded
 end
 
+---@param buf_id number
+---@param menu_line_idx number 0-based line index
+---@param menu_pad number
+local function focus_menu(buf_id, menu_line_idx, menu_pad)
+	if vim.api.nvim_win_get_buf(CURRENT_WINDOW_ID) ~= buf_id then
+		return
+	end
+	vim.api.nvim_win_set_cursor(CURRENT_WINDOW_ID, { menu_line_idx + FIRST_LUA_INDEX, menu_pad })
+end
+
 ---Creates header lines for the dashboard
 ---@param year number
 ---@param username string
@@ -122,7 +388,7 @@ end
 function M.create_header(year, username, win_width)
 	local header_lines = {}
 
-	table.insert(header_lines, "[A] AI")
+	table.insert(header_lines, menu_line())
 	table.insert(header_lines, separator_for_width(win_width))
 	table.insert(
 		header_lines,
@@ -136,6 +402,11 @@ function M.create_header(year, username, win_width)
 	table.insert(header_lines, "")
 	table.insert(header_lines, "User: " .. username)
 	table.insert(header_lines, "Year: " .. year)
+	table.insert(header_lines, "")
+	table.insert(header_lines, ACHIEVEMENTS_TITLE)
+	table.insert(header_lines, ACHIEVEMENTS_LOADING_MESSAGE)
+	table.insert(header_lines, "")
+	table.insert(header_lines, "")
 	table.insert(header_lines, "")
 
 	return header_lines
@@ -155,18 +426,31 @@ function M.get_header_highlights(header_lines)
 	for line_idx, line in ipairs(header_lines) do
 		local line0 = line_idx - FIRST_LUA_INDEX
 
-		if line == "[A] AI" then
+		if line == menu_line() then
+			for _, button in ipairs(MENU_BUTTONS) do
+				local shortcut = "[" .. button.shortcut .. "]"
+				local button_start = line:find(shortcut, FIRST_LUA_INDEX, true)
+				local shortcut_col_start = button_start - FIRST_LUA_INDEX + NEXT_LINE_OFFSET
+				local label_col_start = shortcut_col_start + #shortcut
+				table.insert(highlights, {
+					line = line0,
+					col_start = shortcut_col_start,
+					col_end = shortcut_col_start + NEXT_LINE_OFFSET,
+					hl_group = "GHDashboardMenuShortcut",
+				})
+				table.insert(highlights, {
+					line = line0,
+					col_start = label_col_start,
+					col_end = label_col_start + #button.label,
+					hl_group = "GHDashboardMenuLabel",
+				})
+			end
+		elseif line == ACHIEVEMENTS_TITLE then
 			table.insert(highlights, {
 				line = line0,
-				col_start = AI_MENU_SHORTCUT_COLUMN_START,
-				col_end = AI_MENU_SHORTCUT_COLUMN_END,
-				hl_group = "GHDashboardMenuShortcut",
-			})
-			table.insert(highlights, {
-				line = line0,
-				col_start = AI_MENU_LABEL_COLUMN_START,
+				col_start = BUFFER_START_LINE,
 				col_end = HIGHLIGHT_TO_END_OF_LINE,
-				hl_group = "GHDashboardMenuLabel",
+				hl_group = "GHDashboardAchievementsTitle",
 			})
 		elseif line:match("^─+$") or line:match("^[┌└]") then
 			table.insert(highlights, {
@@ -393,7 +677,7 @@ end
 ---@param year number
 ---@param username string
 ---@param chars table Characters configuration
-function M.render_dashboard(buf_id, contributions, activities, year, username, chars)
+function M.render_dashboard(buf_id, contributions, activities, year, username, chars, achievement_chars)
 	if not vim.api.nvim_buf_is_valid(buf_id) then
 		return
 	end
@@ -411,23 +695,20 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 		win_height - ai_usage_height - bottom_empty_lines - AI_PANEL_SEPARATOR_OFFSET_FROM_BOTTOM
 	)
 	local header_lines = M.create_header(year, username, win_width)
+	achievement_chars = achievement_chars or DEFAULT_ACHIEVEMENT_CHARS
+	local achievement_offsets = achievement_line_offsets(header_lines)
 
 	-- Combine header and graphs
 	local dashboard_lines = {}
-	for _, line in ipairs(header_lines) do
-		table.insert(dashboard_lines, line)
-	end
-	for _, line in ipairs(contributions_graph_lines) do
-		table.insert(dashboard_lines, line)
-	end
+	append_section(dashboard_lines, header_lines, #header_lines)
+	append_section(dashboard_lines, contributions_graph_lines, CONTRIBUTIONS_GRAPH_HEIGHT)
 	table.insert(dashboard_lines, "")
-	for _, line in ipairs(activity_graph_lines) do
-		table.insert(dashboard_lines, line)
-	end
+	append_section(dashboard_lines, activity_graph_lines, ACTIVITY_GRAPH_HEIGHT)
 
 	-- Add empty lines for cursor position info
-	table.insert(dashboard_lines, "")
-	table.insert(dashboard_lines, "")
+	for _ = FIRST_LUA_INDEX, CURSOR_DETAILS_HEIGHT do
+		table.insert(dashboard_lines, "")
+	end
 
 	-- Center everything horizontally relative to the full window width, and
 	-- the whole block vertically. Header lines (title/frame, "User: ...",
@@ -466,7 +747,11 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	end
 	dashboard_pads[#dashboard_lines] = BUFFER_START_LINE
 
-	local vertical_pad = top_empty_lines + vertical_pad_for(ai_panel_line_idx, #dashboard_lines)
+	local vertical_pad = top_empty_lines + vertical_pad_for(ai_panel_line_idx, dashboard_content_height(#header_lines))
+	local achievement_symbols_line_idx = vertical_pad + achievement_offsets.symbols
+	local achievement_name_line_idx = vertical_pad + achievement_offsets.name
+	local achievement_unlocked_line_idx = vertical_pad + achievement_offsets.unlocked
+	local achievement_description_line_idx = vertical_pad + achievement_offsets.description
 
 	local centered_lines = {}
 	for _ = FIRST_LUA_INDEX, vertical_pad do
@@ -501,8 +786,16 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	}, ai_panel_line_idx)
 
 	-- Set up cursor position tracking (need to adjust height calculation)
-	local total_height = vertical_pad + #header_lines + contributions_graph.height + activity_graph.height
-	M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height, contributions_pad)
+	local graph_start_line = vertical_pad + #header_lines
+	local cursor_tracking_height = graph_start_line + CONTRIBUTIONS_GRAPH_HEIGHT + ACTIVITY_GRAPH_HEIGHT
+	M.setup_cursor_tracking(
+		buf_id,
+		contributions_graph,
+		activity_graph,
+		cursor_tracking_height,
+		contributions_pad,
+		graph_start_line
+	)
 
 	local ai_usage_requested = false
 	local function request_ai_usage()
@@ -513,31 +806,70 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 		M.load_ai_usage(buf_id, chars, ai_panel_line_idx)
 	end
 
-	vim.keymap.set("n", "A", request_ai_usage, {
-		buffer = buf_id,
-		desc = "Load GitHub Copilot AI usage",
-		nowait = true,
-	})
+	local function focus_contributions()
+		vim.api.nvim_win_set_cursor(CURRENT_WINDOW_ID, { graph_start_line + FIRST_LUA_INDEX, contributions_pad })
+	end
+
+	local function focus_achievements()
+		local symbols_line = vim.api.nvim_buf_get_lines(
+			buf_id,
+			achievement_symbols_line_idx,
+			achievement_symbols_line_idx + NEXT_LINE_OFFSET,
+			false
+		)[FIRST_LUA_INDEX]
+		local first_content_column = symbols_line:find("%S") - FIRST_LUA_INDEX
+		vim.api.nvim_win_set_cursor(
+			CURRENT_WINDOW_ID,
+			{ achievement_symbols_line_idx + FIRST_LUA_INDEX, first_content_column }
+		)
+	end
+
+	local menu_actions = {
+		A = request_ai_usage,
+		C = focus_contributions,
+		V = focus_achievements,
+	}
+	for _, button in ipairs(MENU_BUTTONS) do
+		vim.keymap.set("n", button.shortcut, menu_actions[button.shortcut], {
+			buffer = buf_id,
+			desc = button.label,
+			nowait = true,
+		})
+	end
+
 	vim.keymap.set("n", "<CR>", function()
 		local current_line = vim.api.nvim_get_current_line()
-		local button_start = current_line:find("[A]", FIRST_LUA_INDEX, true)
 		local cursor_col = vim.api.nvim_win_get_cursor(CURRENT_WINDOW_ID)[CURSOR_COLUMN_INDEX]
-		if
-			button_start
-			and cursor_col >= button_start - FIRST_LUA_INDEX
-			and cursor_col < button_start - FIRST_LUA_INDEX + #"[A]"
-		then
-			request_ai_usage()
-			return ""
+		for _, button in ipairs(MENU_BUTTONS) do
+			local shortcut = "[" .. button.shortcut .. "]"
+			local button_start = current_line:find(shortcut, FIRST_LUA_INDEX, true)
+			if
+				button_start
+				and cursor_col >= button_start - FIRST_LUA_INDEX
+				and cursor_col < button_start - FIRST_LUA_INDEX + #shortcut
+			then
+				menu_actions[button.shortcut]()
+				return
+			end
 		end
 
-		return "<CR>"
+		vim.api.nvim_feedkeys(vim.keycode("<CR>"), "nx", false)
 	end, {
 		buffer = buf_id,
-		expr = true,
-		desc = "Load GitHub Copilot AI usage",
+		desc = "Activate dashboard menu button",
 		nowait = true,
 	})
+
+	M.load_achievements(
+		buf_id,
+		username,
+		achievement_symbols_line_idx,
+		achievement_name_line_idx,
+		achievement_unlocked_line_idx,
+		achievement_description_line_idx,
+		achievement_chars
+	)
+	focus_menu(buf_id, vertical_pad, header_pads[FIRST_LUA_INDEX])
 end
 
 ---Opens the dashboard buffer immediately, showing an animated spinner while the
@@ -547,7 +879,7 @@ end
 ---@param year number Year to fetch contributions for
 ---@param chars table Characters configuration
 ---@return number buf_id
-function M.open_dashboard(username, year, chars)
+function M.open_dashboard(username, year, chars, achievement_chars)
 	local buf_id = M.create_buffer()
 
 	-- Center the header on screen immediately, the same way `render_dashboard`
@@ -566,7 +898,7 @@ function M.open_dashboard(username, year, chars)
 		header_pads[i] = pad_for_line(win_width, line)
 	end
 
-	local vertical_pad = top_empty_lines + vertical_pad_for(ai_panel_line_idx, #header_lines)
+	local vertical_pad = top_empty_lines + vertical_pad_for(ai_panel_line_idx, dashboard_content_height(#header_lines))
 
 	local centered_lines = {}
 	for _ = FIRST_LUA_INDEX, vertical_pad do
@@ -589,6 +921,7 @@ function M.open_dashboard(username, year, chars)
 			hl_group = "GHDashboardSeparator",
 		},
 	}, ai_panel_line_idx)
+	focus_menu(buf_id, vertical_pad, header_pads[FIRST_LUA_INDEX])
 
 	-- The header already ends with a blank line; use it to host the spinner
 	local spinner_line_idx = vertical_pad + #header_lines - NEXT_LINE_OFFSET
@@ -610,7 +943,7 @@ function M.open_dashboard(username, year, chars)
 			end
 		end
 
-		M.render_dashboard(buf_id, contributions, data.activity, year, username, chars)
+		M.render_dashboard(buf_id, contributions, data.activity, year, username, chars, achievement_chars)
 	end, function(message)
 		M.stop_spinner(timer)
 		M.render_error(buf_id, message)
@@ -625,8 +958,16 @@ end
 ---@param activity_graph ActivityGraph
 ---@param total_height number
 ---@param horizontal_pad number|nil defaults to 0
-function M.setup_cursor_tracking(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
-	CursorTracking.setup(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
+---@param graph_start_line number|nil defaults to the pre-reserved-layout graph position
+function M.setup_cursor_tracking(
+	buf_id,
+	contributions_graph,
+	activity_graph,
+	total_height,
+	horizontal_pad,
+	graph_start_line
+)
+	CursorTracking.setup(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad, graph_start_line)
 end
 
 ---Converts global cursor position to graph-local coordinates
@@ -644,13 +985,22 @@ end
 ---@param activity_graph ActivityGraph
 ---@param total_height number
 ---@param horizontal_pad number|nil defaults to 0
-function M.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad)
+---@param graph_start_line number|nil defaults to the pre-reserved-layout graph position
+function M.update_contribution_details(
+	buf_id,
+	contributions_graph,
+	activity_graph,
+	total_height,
+	horizontal_pad,
+	graph_start_line
+)
 	CursorTracking.update_contribution_details(
 		buf_id,
 		contributions_graph,
 		activity_graph,
 		total_height,
-		horizontal_pad
+		horizontal_pad,
+		graph_start_line
 	)
 end
 
