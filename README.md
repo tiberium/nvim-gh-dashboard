@@ -100,9 +100,9 @@ require("nvim-gh-dashboard").setup({
 See [Color customization](COLORS.md) for every configurable highlight
 group, its default link, and usage.
 
-![Gruvbox](./assets/gruvbox.png)
 ![Hackerman](./assets/hackerman.png)
-![Catppuccin Latte](./assets/catppuccin_latte.png)
+![Tokyo Night](./assets/tokyo_night.png)
+![Flexoki Light](./assets/flexoki_light.png)
 
 ## Troubleshooting
 
