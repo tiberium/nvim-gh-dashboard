@@ -1,284 +1,135 @@
 # nvim-gh-dashboard
 
-A Neovim plugin that displays GitHub contribution graphs directly in your editor. View your own or any GitHub user's contributions & activities in a beautiful ASCII graph format.
-
-> **⚠️ Note: This plugin is currently in alpha development stage.**  
-> The plugin is under active development and may undergo significant changes. Features, configuration options, and API may change frequently. Use at your own discretion and expect potential breaking changes in future updates.
+A Neovim dashboard for public GitHub profile data, rendered as ASCII art.
 
 ![GitHub Contributions & Activity Dashboards - Matte Black](./assets/nvim_gh_dashboard.gif)
 
 ## Features
 
-- 📊 **ASCII Contribution Graph** - Beautiful visualization of GitHub contributions 
-- 👤 **ASCII Activity Graph** - Beautiful summary visualization of GitHub activities
-- 🎯 **Interactive Cursor** - Move cursor to see contribution details for specific days
-- 💳 **AI Usage** - Press `A` in the dashboard to load personal Copilot credit and additional-usage budget consumption when `gh` is authenticated
-- 🏆 **Achievements** - Loads public GitHub profile achievements asynchronously, including unlock dates and descriptions on selection
-- ⚙️ **Configurable** - Set custom username and year
-- 🚀 **Fast** - Fetches data directly from GitHub
-- 🎨 **Colorful UI** - Read-only buffer, colored using your current colorscheme's palette, fully customizable
+- 📊 **Contribution calendar** with per-day details under the cursor
+- 👤 **Activity breakdown** for code review, commits, pull requests, and issues
+- 🏆 **Achievements** with unlock date and description on selection
+- 💳 **AI Usage**: included credits, over-pool credits, and additional budget
+- 🎨 **Colorful UI** that inherits and can override your colorscheme
+- 🚀 **Fast** async loading with spinners, so Neovim stays responsive
 
 ## Requirements
 
 - Neovim >= 0.7.0
-- [plenary.nvim](https://github.com/nvim-lua/plenary.nvim) - Required for HTTP requests
-- [GitHub CLI](https://cli.github.com/) (optional) - Authenticate with `gh auth login` to show the AI Usage panel
+- [plenary.nvim](https://github.com/nvim-lua/plenary.nvim)
+- [GitHub CLI](https://cli.github.com/) (optional, only for the AI Usage panel); authenticate with `gh auth login`
 
 ## Installation
 
-### Using [lazy.nvim](https://github.com/folke/lazy.nvim)
+### [lazy.nvim](https://github.com/folke/lazy.nvim)
 
 ```lua
 {
-  "tiberium/nvim-gh-dashboard", -- Replace with actual repo path
+  "tiberium/nvim-gh-dashboard",
   dependencies = { "nvim-lua/plenary.nvim" },
-  config = function()
-    require("nvim-gh-dashboard").setup()
-  end
+  opts = {},
 }
 ```
 
-### Using [packer.nvim](https://github.com/wbthomason/packer.nvim)
+### [packer.nvim](https://github.com/wbthomason/packer.nvim)
 
 ```lua
 use {
-  "tiberium/nvim-gh-dashboard", -- Replace with actual repo path
+  "tiberium/nvim-gh-dashboard",
   requires = { "nvim-lua/plenary.nvim" },
   config = function()
     require("nvim-gh-dashboard").setup()
-  end
+  end,
 }
 ```
 
-### Development Installation
-
-If you want to play around with the plugin, clone this repository, and configure the plugin (lazy):
+## Setup and usage
 
 ```lua
-{
-  dir = "~/path/to/nvim-gh-dashboard", -- Your local path
-  dependencies = { "nvim-lua/plenary.nvim" },
-  config = function()
-    require("nvim-gh-dashboard").setup()
-  end
-}
+require("nvim-gh-dashboard").setup({
+  username = "octocat",
+  year = 2023,
+})
 ```
+
+`setup()` opens the dashboard when Neovim starts without file arguments. Use
+`:GHDashboard` at any time, including when Neovim was started with a file:
+
+```vim
+:GHDashboard
+:GHDashboard octocat
+:GHDashboard octocat 2023
+```
+
+The dashboard is read-only. Move through the contribution graph with normal
+cursor motions to see the selected day's details. Its menu is focused when the
+dashboard opens; use `C`, `A`, or `V`, or press `<Enter>` on a menu shortcut,
+to focus Contributions, load AI Usage, or focus Achievements respectively.
+Achievements load automatically; moving over a badge loads its details. AI
+Usage is requested only after you select it.
 
 ## Configuration
 
-### Basic Usage
-
-```lua
--- Opens automatically when Neovim starts without a file.
--- Uses defaults: current year, "torvalds" username.
-require("nvim-gh-dashboard").setup()
-```
-
-When Neovim starts with a file (for example, `nvim path/to/file.txt`), setup
-keeps that file open. Use `:GHDashboard` to open the dashboard at any time.
-
-### Custom Configuration
-
-```lua
-require("nvim-gh-dashboard").setup({
-  username = "octocat",  -- GitHub username to display
-  year = 2023           -- Year to show contributions for
-})
-```
-
-### Configuration Options
-
 | Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `username` | `string` | `"torvalds"` | GitHub username whose contributions to display |
-| `year` | `number` | Current year | Year to fetch contributions for |
-| `chars` | `table` | See below | Characters used to render the graph |
-| `chars.filled` | `string` | `"#"` | Character for days with contributions |
-| `chars.high` | `string` | `"@"` | Character for days with the highest single-day contribution count, as flagged by GitHub |
-| `chars.empty` | `string` | `"."` | Character for days with no contributions |
-| `achievement_chars` | `string` | `"% ,& ,* ,( ,[ ,? ,! ,+ ,= ,~"` | Up to 10 comma-separated ASCII symbols randomly assigned to achievements |
-| `colors` | `table` | See below | Highlight group overrides, keyed by group name (see [Colors](#colors)) |
+|---|---|---|---|
+| `username` | `string` | `"torvalds"` | GitHub username to display |
+| `year` | `number` | Current year | Contributions year |
+| `chars.filled` | `string` | `"#"` | Graph character for a non-empty value |
+| `chars.high` | `string` | `"@"` | Graph character for GitHub's highest contribution day |
+| `chars.empty` | `string` | `"."` | Graph character for an empty value |
+| `achievement_chars` | `string` | `"%,&,*,(,[,?,!,+,=,~"` | One to ten comma-separated printable ASCII badge symbols |
+| `colors` | `table` | `{}` | Highlight-group overrides |
+
+`chars` defaults to `{ filled = "#", high = "@", empty = "." }`. The same
+characters render contribution, activity, and AI Usage bars.
 
 ### Colors
 
-The contribution graph uses multiple shades of intensity. All `BarGraph`
-instances (activity and AI usage) share the `GHDashboardBarGraphFill` color.
-
-Colors are **not** hard-coded: every highlight group used by the plugin is
-`link`-ed by default to a built-in Neovim highlight group (`String`, `Title`,
-`DiagnosticWarn`, ...), so the dashboard automatically re-uses whatever
-palette your current colorscheme already defines. No extra colorscheme or
-palette plugin is required.
-
-| Highlight group | Default link | Used for |
-|---|---|---|
-| `GHDashboardHeaderBorder` | `FloatBorder` | The `┌─┐`/`└─┘` box border around the header |
-| `GHDashboardHeaderTitle` | `Title` | The "GitHub Contributions" header title |
-| `GHDashboardHeaderLabel` | `Comment` | The `User:`/`Year:` labels |
-| `GHDashboardHeaderValue` | `Identifier` | The configured username/year values |
-| `GHDashboardEmpty` | `Comment` | Days with no contributions |
-| `GHDashboardLevel1` | `DiagnosticHint` | Days with 1-3 contributions |
-| `GHDashboardLevel2` | `DiagnosticInfo` | Days with 4-6 contributions |
-| `GHDashboardLevel3` | `DiagnosticOk` | Days with 7-9 contributions |
-| `GHDashboardLevel4` | `String` | Days with 10-99 contributions |
-| `GHDashboardHigh` | `DiagnosticWarn` (bold) | Days with 100+ contributions |
-| `GHDashboardBarGraphFill` | `Function` | Filled activity and AI Usage bars |
-| `GHDashboardActivityLabel` | `Identifier` | The activity type label (`commits`, `issues`, ...) |
-| `GHDashboardActivityBorder` | `NonText` | The `[`/`]` brackets around each activity bar |
-| `GHDashboardActivityBarEmpty` | `Comment` | The empty portion of an activity bar |
-| `GHDashboardActivityPercent` | `Number` | The trailing percentage value |
-| `GHDashboardMenuShortcut` | `Function` (bold) | The menu shortcut, such as `A` in `[A] AI` |
-| `GHDashboardMenuLabel` | `String` | The label of an ASCII menu button |
-| `GHDashboardSeparator` | `NonText` | The full-width separator above the AI Usage panel |
-| `GHDashboardAiUsageTitle` | `Title` | The AI Usage section heading |
-| `GHDashboardAiUsageLabel` | `Identifier` | Labels in AI Usage graphs |
-| `GHDashboardAiUsageBorder` | `NonText` | The `[`/`]` brackets around AI Usage bars |
-| `GHDashboardAiUsageValue` | `Number` | AI Usage amounts and remaining budget |
-
-Every group can be overridden through `opts.colors`, using the same shape
-accepted by `vim.api.nvim_set_hl()` (e.g. `{ fg = "#rrggbb" }`, `{ link =
-"SomeOtherGroup" }`, `{ bold = true }`, ...). Overrides are merged on top of
-the defaults, so you only need to specify the fields you want to change:
+By default, the dashboard follows the active colorscheme. Override only the
+groups you need:
 
 ```lua
 require("nvim-gh-dashboard").setup({
   colors = {
-    -- Use explicit colors instead of linking to the colorscheme
     GHDashboardHigh = { fg = "#ff9e64", bold = true },
     GHDashboardBarGraphFill = { link = "DiagnosticOk" },
-  }
+  },
 })
 ```
 
-You can also change the colors afterwards (e.g. when switching colorscheme)
-by calling `require("nvim-gh-dashboard.colors").setup({ ... })` directly and
-re-opening the dashboard.
-
-Examples with custom colors inherited from system color scheme on [Omarchy](https://omarchy.org/):
+See [Color customization](COLORS.md) for every configurable highlight
+group, its default link, and usage.
 
 ![Gruvbox](./assets/gruvbox.png)
-
 ![Hackerman](./assets/hackerman.png)
-
 ![Catppuccin Latte](./assets/catppuccin_latte.png)
-
-### Examples
-
-```lua
--- View your own contributions for current year
-require("nvim-gh-dashboard").setup({
-  username = "your-github-username"
-})
-
--- View specific user's contributions for 2022
-require("nvim-gh-dashboard").setup({
-  username = "linus",
-  year = 2022
-})
-
--- View contributions for current year (uses torvalds as default)
-require("nvim-gh-dashboard").setup({
-  year = 2024
-})
-
--- Customize graph characters
-require("nvim-gh-dashboard").setup({
-  username = "octocat",
-  chars = {
-    filled = "+",  -- Days with contributions
-    high = "#",    -- Highest single-day contribution count, as flagged by GitHub
-    empty = "."    -- Days with no contributions
-  }
-})
-
--- Customize colors, overriding only the highlight groups you care about
-require("nvim-gh-dashboard").setup({
-  username = "octocat",
-  colors = {
-    GHDashboardHigh = { fg = "#ff9e64", bold = true },
-    GHDashboardBarGraphFill = { link = "DiagnosticOk" },
-  }
-})
-```
-
-```lua
--- Customize achievement symbols (up to 10 comma-separated ASCII characters)
-require("nvim-gh-dashboard").setup({
-  achievement_chars = "%,&,*,(,[,?"
-})
-```
-
-## Usage
-
-1. **Launch**: Plugin automatically opens when Neovim starts (if configured in your init)
-2. **Navigate**: Use arrow keys or `hjkl` to move cursor around the contribution graph
-3. **View Details**: When cursor is on the graph, the bottom line shows contribution details for that day
-4. **AI Usage**: Press uppercase `A` to load your authenticated GitHub Copilot usage; it is not requested when the dashboard opens
-5. **Read-Only**: The buffer is read-only, so you can't accidentally edit the content
-
-## How It Works
-
-The plugin:
-1. Fetches contribution data from GitHub's public pages
-2. Parses the HTML to extract contribution information and achievements
-3. Generates an ASCII representation of the contribution graph
-4. Generates an ASCII reporesentation of the activity graph, incase it is available
-4. Displays it in a special Neovim buffer with interactive cursor tracking
-
-## Graph Legend
-
-- `#` - Days with contributions
-- `@` - Days with 100+ contributions  
-- `.` - Days with no contributions
-
-*Note: Characters can be customized via the `chars` configuration option. See
-[Colors](#colors) for the full list of highlight groups and how to customize
-them.*
 
 ## Troubleshooting
 
-**Plugin doesn't load:**
-- Make sure `plenary.nvim` is installed
-- Check that the GitHub username exists and is public
-
-**No contributions shown:**
-- Verify the username is correct
-- Check if the user has public contributions for the specified year
-- Some users may have private contribution graphs
-
-**Network issues:**
-- The plugin requires internet connection to fetch GitHub data
+- For basic functionality: contributions and activity diagrams, ensure the username exists and its profile/contributions are available for you to view.
+- To enable all the features install and authenticate the GitHub CLI with `gh auth login`.
 
 ## Testing
 
-Tests are written with [plenary.nvim](https://github.com/nvim-lua/plenary.nvim)'s busted-style test harness. To run them:
+Formatting and linting:
+
+```sh
+stylua --check lua tests plugin
+luacheck lua tests plugin
+```
+
+Run the complete test suite:
 
 ```sh
 PLENARY_PATH=/path/to/plenary.nvim \
   nvim --headless --noplugin -u tests/minimal_init.lua \
-  -c "PlenaryBustedDirectory tests/ {minimal_init = 'tests/minimal_init.lua'}"
+  -c "PlenaryBustedDirectory tests/nvim-gh-dashboard { minimal_init = 'tests/minimal_init.lua' }"
 ```
-
-## Releases
-
-Releases are managed by
-[Release Please](https://github.com/googleapis/release-please). Conventional
-Commits merged into `main` update an automated release pull request. Merging
-that pull request creates the GitHub release and tag, and updates
-`CHANGELOG.md` and `version.txt`.
-
-`PLENARY_PATH` can be omitted if `plenary.nvim` is already installed in one of the common plugin manager locations.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit issues, feature requests, or pull requests.
+Contributions, issues, and feature requests are welcome.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## Acknowledgments
-
-- Inspired by GitHub's contribution graph
-- Built with [plenary.nvim](https://github.com/nvim-lua/plenary.nvim) for HTTP requests
-- Thanks to the Neovim community for plugin development resources
+[MIT](LICENSE)

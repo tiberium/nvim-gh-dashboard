@@ -1,4 +1,4 @@
-*nvim-gh-dashboard.txt*     A GitHub contributions & activity dashboard for Neovim
+*nvim-gh-dashboard.txt*     A GitHub profile dashboard for Neovim
 
 ==============================================================================
 CONTENTS                                            *nvim-gh-dashboard-contents*
@@ -8,19 +8,25 @@ CONTENTS                                            *nvim-gh-dashboard-contents*
     3. Setup ...................... |nvim-gh-dashboard-setup|
     4. Commands ................... |nvim-gh-dashboard-commands|
     5. Configuration .............. |nvim-gh-dashboard-configuration|
-    6. Colors ...................... |nvim-gh-dashboard-colors|
+    6. Dashboard controls .......... |nvim-gh-dashboard-controls|
+    7. Colors ...................... |nvim-gh-dashboard-colors|
+    8. Troubleshooting .............. |nvim-gh-dashboard-troubleshooting|
+    9. Testing ...................... |nvim-gh-dashboard-testing|
 
 ==============================================================================
 1. Introduction                                *nvim-gh-dashboard-introduction*
 
-nvim-gh-dashboard displays a GitHub user's contribution graph and activity
-overview as ASCII graphs in a Neovim buffer.
+nvim-gh-dashboard displays a public GitHub profile in a read-only Neovim
+buffer. It includes contribution and activity graphs, achievements, and
+on-demand personal Copilot usage.
 
 ==============================================================================
 2. Requirements                                *nvim-gh-dashboard-requirements*
 
 - Neovim >= 0.7.0
 - plenary.nvim (https://github.com/nvim-lua/plenary.nvim)
+- GitHub CLI (https://cli.github.com/) authenticated with `gh auth login`
+  (optional; required only for the AI Usage panel)
 
 ==============================================================================
 3. Setup                                              *nvim-gh-dashboard-setup*
@@ -35,6 +41,9 @@ overview as ASCII graphs in a Neovim buffer.
 `setup()` opens a new scratch buffer immediately, shows a loading spinner
 while data is fetched from GitHub asynchronously (the UI is never blocked),
 and replaces it with the rendered graphs once the request completes.
+
+When Neovim starts with file arguments, `setup()` leaves the file open. Use
+|:GHDashboard| to open the dashboard.
 
 ==============================================================================
 4. Commands                                        *nvim-gh-dashboard-commands*
@@ -69,9 +78,31 @@ and replaces it with the rendered graphs once the request completes.
                               Default: `"."`
     colors          (table)   Highlight group overrides, keyed by group
                               name. See |nvim-gh-dashboard-colors|.
+    achievement_chars
+                    (string)  One to ten comma-separated printable ASCII
+                              characters assigned to achievement badges.
+                              Default: `"%,&,*,(,[,?,!,+,=,~"`
+
+    `chars` defaults to `{ filled = "#", high = "@", empty = "." }` and is
+    used by contribution, activity, and AI Usage graphs.
 
 ==============================================================================
-6. Colors                                            *nvim-gh-dashboard-colors*
+6. Dashboard controls                              *nvim-gh-dashboard-controls*
+
+The dashboard opens with its menu focused. Use the following buffer-local
+normal-mode mappings:
+
+    C               Focus the contribution graph.
+    A               Load the personal Copilot usage panel on demand.
+    V               Focus achievement badges.
+    <Enter>         Activate the menu item under the cursor.
+
+Move the cursor through the contribution graph to display the selected day's
+details. Achievement badges load their unlock date and description when
+selected. The dashboard buffer is read-only.
+
+==============================================================================
+7. Colors                                            *nvim-gh-dashboard-colors*
 
 The contribution graph uses multiple shades of intensity. All `BarGraph`
 instances (activity and AI usage) share the `GHDashboardBarGraphFill` color.
@@ -80,11 +111,20 @@ Colors are not hard-coded: every highlight group is `link`-ed by default to
 a built-in Neovim highlight group, so the dashboard automatically re-uses
 whatever palette the active colorscheme already defines.
 
+The Markdown color reference at `COLORS.md` lists every group, its
+default link, and its purpose.
+
     Highlight group                Default link          Used for ~
     GHDashboardHeaderBorder         FloatBorder           Header box border
     GHDashboardHeaderTitle          Title                 Header title
     GHDashboardHeaderLabel          Comment               `User:`/`Year:` labels
     GHDashboardHeaderValue          Identifier            Username/year values
+    GHDashboardAchievementsTitle    DiagnosticInfo (bold) Achievements heading
+    GHDashboardAchievementsEmpty    Comment               Empty achievements state
+    GHDashboardAchievementsError    DiagnosticError       Achievements error state
+    GHDashboardAchievementDescription Identifier          Achievement name
+    GHDashboardAchievementDetails   Comment               Unlock date/description
+    GHDashboardAchievementSymbol1-10 varied (bold)       Achievement badges
     GHDashboardEmpty                Comment               Days with 0 contributions
     GHDashboardLevel1               DiagnosticHint        Days with 1-3 contributions
     GHDashboardLevel2               DiagnosticInfo        Days with 4-6 contributions
@@ -96,6 +136,13 @@ whatever palette the active colorscheme already defines.
     GHDashboardActivityBorder       NonText               Activity bar `[`/`]` brackets
     GHDashboardActivityBarEmpty     Comment               Empty portion of activity bar
     GHDashboardActivityPercent      Number                Trailing percentage value
+    GHDashboardMenuShortcut         Function (bold)       Menu shortcut
+    GHDashboardMenuLabel            String                Menu label
+    GHDashboardSeparator            NonText               Section separator
+    GHDashboardAiUsageTitle         Title                 AI Usage heading
+    GHDashboardAiUsageLabel         Identifier            AI Usage labels
+    GHDashboardAiUsageBorder        NonText               AI Usage bar brackets
+    GHDashboardAiUsageValue         Number                AI Usage values
 
 Override any of these groups through `opts.colors`, using the same shape
 accepted by `nvim_set_hl()`: >lua
@@ -105,6 +152,33 @@ accepted by `nvim_set_hl()`: >lua
             GHDashboardBarGraphFill = { link = "DiagnosticOk" },
         }
     })
+<
+
+==============================================================================
+8. Troubleshooting                    *nvim-gh-dashboard-troubleshooting*
+
+- For contributions and activity graphs, ensure that the username exists and
+  its profile and contribution data are available to your GitHub account.
+- To enable AI Usage, install GitHub CLI and authenticate it with:
+>
+    gh auth login
+<
+
+==============================================================================
+9. Testing                                      *nvim-gh-dashboard-testing*
+
+Check formatting and lint:
+>
+    stylua --check lua tests plugin
+    luacheck lua tests plugin
+<
+
+Run the complete Plenary test suite. Set `PLENARY_PATH` when Plenary is not
+available in a common plugin-manager location:
+>
+    PLENARY_PATH=/path/to/plenary.nvim \
+      nvim --headless --noplugin -u tests/minimal_init.lua \
+      -c "PlenaryBustedDirectory tests/nvim-gh-dashboard { minimal_init = 'tests/minimal_init.lua' }"
 <
 
  vim:tw=78:ts=8:noet:ft=help:norl:
