@@ -8,6 +8,7 @@ A Neovim dashboard for public GitHub profile data, rendered as ASCII art.
 
 - 📊 **Contribution calendar** with per-day details under the cursor
 - 👤 **Activity breakdown** for code review, commits, pull requests, and issues
+- 👥 **Profile statistics** for followers and following
 - 🏆 **Achievements** with unlock date and description on selection
 - 💳 **AI Usage**: included credits, over-pool credits, and additional budget
 - 🎨 **Colorful UI** that inherits and can override your colorscheme

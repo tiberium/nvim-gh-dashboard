@@ -23,6 +23,24 @@ describe("dashboard-view", function()
 			assert.matches("Year: 2024", joined)
 			assert.equals(1, select(2, joined:gsub(string.rep("─", 80), "")))
 		end)
+
+		it("includes followers and following when profile details are available", function()
+			local lines = DashboardView.create_header(2024, "octocat", 80, {
+				followers = "1.2k",
+				following = "42",
+			})
+
+			local profile_details_line_idx
+			for line_idx, line in ipairs(lines) do
+				if line == "Followers: 1.2k | Following: 42" then
+					profile_details_line_idx = line_idx
+					break
+				end
+			end
+			assert.is_not_nil(profile_details_line_idx)
+			assert.equals("", lines[profile_details_line_idx + 1])
+			assert.equals("Achievements", lines[profile_details_line_idx + 2])
+		end)
 	end)
 
 	describe("create_buffer", function()
@@ -149,7 +167,7 @@ describe("dashboard-view", function()
 				end
 			end
 			assert.equals(user_line_idx + 1, year_line_idx)
-			assert.equals(year_line_idx + 2, achievements_title_idx)
+			assert.equals(year_line_idx + 3, achievements_title_idx)
 			local symbols_line_idx = achievements_title_idx + 1
 			assert.equals(achievements_title_idx + 1, symbols_line_idx)
 			assert.is_true(
@@ -171,6 +189,42 @@ describe("dashboard-view", function()
 
 			GithubService.fetch_achievements = original_fetch_achievements
 			GithubService.fetch_achievement_details = original_fetch_achievement_details
+			vim.api.nvim_buf_delete(buf_id, { force = true })
+		end)
+
+		it("renders followers and following beneath the profile identity", function()
+			local Contribution = require("nvim-gh-dashboard.contribution")
+			local metadata = ContributionMetadata.new("0", "0", "5 contributions on January 21.")
+			local buf_id = vim.api.nvim_create_buf(false, true)
+
+			DashboardView.render_dashboard(
+				buf_id,
+				{ Contribution.new(metadata) },
+				nil,
+				2024,
+				"octocat",
+				default_chars,
+				nil,
+				{
+					followers = "1.2k",
+					following = "42",
+				}
+			)
+
+			local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
+			local rendered = table.concat(lines, "\n")
+			assert.matches("Followers: 1%.2k | Following: 42", rendered)
+			local profile_details_line_idx
+			for line_idx, line in ipairs(lines) do
+				if line:find("Followers: 1.2k | Following: 42", 1, true) then
+					profile_details_line_idx = line_idx
+					break
+				end
+			end
+			assert.is_not_nil(profile_details_line_idx)
+			assert.equals("", lines[profile_details_line_idx + 1])
+			assert.matches("Achievements", lines[profile_details_line_idx + 2])
+
 			vim.api.nvim_buf_delete(buf_id, { force = true })
 		end)
 

@@ -3,6 +3,7 @@ local M = {}
 local ContributionMetadata = require("nvim-gh-dashboard.contribution-metadata")
 local ActivityMetadata = require("nvim-gh-dashboard.activity-metadata")
 local AchievementMetadata = require("nvim-gh-dashboard.achievement-metadata")
+local ProfileDetails = require("nvim-gh-dashboard.profile-details")
 
 local HTTP_OK_STATUS = 200
 local DECEMBER = 12
@@ -22,12 +23,14 @@ local HOVERCARD_REQUEST_HEADERS = {
 ---@class DashboardData
 ---@field contributions ContributionMetadata[]
 ---@field activity ActivityMetadata|nil
+---@field profile_details ProfileDetails|nil
 
--- Cache for the main GitHub user page content (request.body)
+-- Cache the contribution tab and full profile page by their shared dashboard key.
 local cached_gh_main_page = {
 	username = nil,
 	year = nil,
-	html = nil,
+	contributions_html = nil,
+	profile_html = nil,
 }
 
 ---@param username string GitHub username
@@ -42,6 +45,12 @@ local function build_url(username, year)
 	end
 
 	return url
+end
+
+---@param username string GitHub username
+---@return string url
+local function build_profile_url(username)
+	return string.format("%s/%s", GITHUB_BASE_URL, username)
 end
 
 ---@param username string GitHub username
@@ -62,6 +71,12 @@ local function parse_contributions(user_page)
 		table.insert(contributions_list, ContributionMetadata.new(day, week, tooltip))
 	end
 	return contributions_list
+end
+
+---@param html string
+---@return string
+local function plain_text(html)
+	return html:gsub("<[^>]->", ""):gsub("&amp;", "&"):gsub("&quot;", '"'):gsub("%s+", " "):match("^%s*(.-)%s*$")
 end
 
 ---@param user_page string HTML of the GitHub user page
@@ -87,6 +102,30 @@ local function parse_activity(user_page)
 end
 
 ---@param user_page string HTML of the GitHub user page
+---@return ProfileDetails|nil
+local function parse_profile_details(user_page)
+	local followers, following
+
+	for attributes, content in user_page:gmatch("<a%s+([^>]-)>(.-)</a>") do
+		local tab = attributes:match('[?&]tab=([^"&]+)')
+		if tab == "followers" or tab == "following" then
+			local count = plain_text(content):match("^([%d%.,]+[kKmM]?)%s+")
+			if tab == "followers" then
+				followers = count
+			else
+				following = count
+			end
+		end
+	end
+
+	if not followers or not following then
+		return nil
+	end
+
+	return ProfileDetails.new(followers, following)
+end
+
+---@param user_page string HTML of the GitHub user page
 ---@return AchievementMetadata[]
 local function parse_achievements(user_page)
 	local achievements = {}
@@ -109,12 +148,6 @@ local function parse_achievements(user_page)
 	return achievements
 end
 
----@param html string
----@return string
-local function plain_text(html)
-	return html:gsub("<[^>]->", ""):gsub("&amp;", "&"):gsub("&quot;", '"'):gsub("%s+", " "):match("^%s*(.-)%s*$")
-end
-
 ---@param achievement_page string HTML of an achievement hovercard
 ---@return { description: string|nil, unlocked_at: string|nil }
 local function parse_achievement_details(achievement_page)
@@ -133,15 +166,17 @@ end
 
 ---@param user_page string HTML of the GitHub user page
 ---@return DashboardData
-local function parse_dashboard_data(user_page)
+local function parse_dashboard_data(contributions_page, profile_page)
 	return {
-		contributions = parse_contributions(user_page),
-		activity = parse_activity(user_page),
+		contributions = parse_contributions(contributions_page),
+		activity = parse_activity(contributions_page),
+		profile_details = parse_profile_details(profile_page),
 	}
 end
 
 M.parse_contributions = parse_contributions
 M.parse_activity = parse_activity
+M.parse_profile_details = parse_profile_details
 M.parse_achievements = parse_achievements
 M.parse_achievement_details = parse_achievement_details
 M.parse_dashboard_data = parse_dashboard_data
@@ -203,10 +238,9 @@ function M.fetch_achievements(username, on_success, on_error)
 	})
 end
 
----Fetches the GitHub user page once, asynchronously, and parses both contributions
----and activity out of the same response. `on_success`/`on_error` are always invoked
----on the main event loop (via `vim.schedule_wrap`), so it is safe to touch buffers,
----windows or other UI state from them.
+---Fetches the contribution tab and full profile page asynchronously. `on_success`/
+---`on_error` are always invoked on the main event loop (via `vim.schedule_wrap`),
+---so it is safe to touch buffers, windows or other UI state from them.
 ---@param username string GitHub username
 ---@param year number|nil Year to fetch contributions for
 ---@param use_cache boolean|nil Whether to use cached page content
@@ -215,39 +249,75 @@ end
 function M.fetch_dashboard_data(username, year, use_cache, on_success, on_error)
 	local caching = use_cache or false
 
-	if
-		caching
-		and cached_gh_main_page.html ~= nil
-		and cached_gh_main_page.username == username
-		and cached_gh_main_page.year == year
-	then
-		on_success(parse_dashboard_data(cached_gh_main_page.html))
-		return
+	if caching and cached_gh_main_page.username == username and cached_gh_main_page.year == year then
+		if cached_gh_main_page.contributions_html and cached_gh_main_page.profile_html then
+			on_success(parse_dashboard_data(cached_gh_main_page.contributions_html, cached_gh_main_page.profile_html))
+			return
+		end
 	end
 
 	local curl = require("plenary.curl")
-	local url = build_url(username, year)
+	local contributions_url = build_url(username, year)
+	local profile_url = build_profile_url(username)
+	local contributions_page
+	local profile_page
+	local completed = false
 
-	curl.get(url, {
+	local function finish()
+		if completed or not contributions_page or not profile_page then
+			return
+		end
+
+		completed = true
+		cached_gh_main_page = {
+			username = username,
+			year = year,
+			contributions_html = contributions_page,
+			profile_html = profile_page,
+		}
+
+		on_success(parse_dashboard_data(contributions_page, profile_page))
+	end
+
+	local function fail(message)
+		if completed then
+			return
+		end
+
+		completed = true
+		on_error(message)
+	end
+
+	curl.get(contributions_url, {
 		headers = {
 			["x-requested-with"] = "XMLHttpRequest",
 		},
 		callback = vim.schedule_wrap(function(response)
 			if response.status ~= HTTP_OK_STATUS then
-				on_error(string.format("Failed to fetch GitHub page (status %s).", tostring(response.status)))
+				fail(string.format("Failed to fetch GitHub contributions (status %s).", tostring(response.status)))
 				return
 			end
 
-			cached_gh_main_page = {
-				username = username,
-				year = year,
-				html = response.body,
-			}
-
-			on_success(parse_dashboard_data(response.body))
+			contributions_page = response.body
+			finish()
 		end),
 		on_error = vim.schedule_wrap(function(err)
-			on_error("Failed to fetch GitHub page: " .. (err and err.message or "unknown error"))
+			fail("Failed to fetch GitHub contributions: " .. (err and err.message or "unknown error"))
+		end),
+	})
+
+	curl.get(profile_url, {
+		callback = vim.schedule_wrap(function(response)
+			if response.status ~= HTTP_OK_STATUS then
+				fail(string.format("Failed to fetch GitHub profile (status %s).", tostring(response.status)))
+				return
+			end
+
+			profile_page = response.body
+			finish()
+		end),
+		on_error = vim.schedule_wrap(function(err)
+			fail("Failed to fetch GitHub profile: " .. (err and err.message or "unknown error"))
 		end),
 	})
 end
