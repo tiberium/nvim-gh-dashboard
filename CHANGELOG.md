@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.8.0...v1.9.0) (2026-09-25)
+
+
+### Features
+
+* Add followers/following counters ([#34](https://github.com/tiberium/nvim-gh-dashboard/issues/34)) ([e251579](https://github.com/tiberium/nvim-gh-dashboard/commit/e2515799f4e621e1f15bd5654ad4e1d4aafe41ef))
+
 ## [1.8.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.7.0...v1.8.0) (2026-09-25)
 
 
