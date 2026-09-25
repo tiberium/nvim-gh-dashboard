@@ -28,7 +28,15 @@ local CURSOR_COLUMN_INDEX = 2
 local CONTRIBUTIONS_GRAPH_HEIGHT = 7
 local ACTIVITY_GRAPH_HEIGHT = 4
 local GRAPH_SEPARATOR_HEIGHT = 1
-local CURSOR_DETAILS_HEIGHT = 2
+local HEADER_FIRST_CONTENT_LINE_OFFSET = 3
+local HEADER_CONTENT_LINE_COUNT = 3
+local HEADER_TOP_BORDER_OFFSET = -1
+local HEADER_BOTTOM_BORDER_OFFSET = HEADER_CONTENT_LINE_COUNT
+local HEADER_CONTENT_WIDTH = 62
+local HEADER_CONTENT_TRUNCATION_SUFFIX = "..."
+local HEADER_LEFT_BORDER = "│"
+local HEADER_RIGHT_BORDER = "│"
+local HEADER_DEFAULT_CONTENT = { "", "GitHub Dashboard", "" }
 local vertical_offset = 5
 local ai_usage_height = 4
 local bottom_empty_lines = 2
@@ -38,13 +46,9 @@ local ACHIEVEMENTS_LOADING_MESSAGE = "Loading achievements..."
 local ACHIEVEMENTS_EMPTY_MESSAGE = "No achievements."
 local ACHIEVEMENTS_ERROR_MESSAGE = "Unable to load achievements."
 local ACHIEVEMENT_DETAILS_LOADING_MESSAGE = "Loading achievement details..."
-local ACHIEVEMENT_UNLOCKED_PREFIX = "Unlocked: "
 local ACHIEVEMENTS_SYMBOL_SEPARATOR = " "
 local ACHIEVEMENTS_CURSOR_GROUP = "GHDashboardAchievementsCursor"
 local ACHIEVEMENTS_SYMBOLS_OFFSET_FROM_TITLE = 1
-local ACHIEVEMENT_NAME_OFFSET_FROM_SYMBOLS = 1
-local ACHIEVEMENT_UNLOCKED_OFFSET_FROM_NAME = 1
-local ACHIEVEMENT_DESCRIPTION_OFFSET_FROM_UNLOCKED = 1
 local DEFAULT_ACHIEVEMENT_CHARS = { "%", "&", "*", "(", "[", "?", "!", "+", "=", "~" }
 local ACHIEVEMENT_SYMBOL_HIGHLIGHT_GROUPS = {
 	"GHDashboardAchievementSymbol1",
@@ -112,19 +116,14 @@ local function max_width(lines)
 end
 
 ---@param header_lines string[]
----@return { symbols: number, name: number, unlocked: number, description: number } 0-based line offsets
+---@return { symbols: number } 0-based line offsets
 local function achievement_line_offsets(header_lines)
 	for line_idx, line in ipairs(header_lines) do
 		if line == ACHIEVEMENTS_TITLE then
 			local title_line_offset = line_idx - FIRST_LUA_INDEX
 			local symbols_line_offset = title_line_offset + ACHIEVEMENTS_SYMBOLS_OFFSET_FROM_TITLE
-			local name_line_offset = symbols_line_offset + ACHIEVEMENT_NAME_OFFSET_FROM_SYMBOLS
-			local unlocked_line_offset = name_line_offset + ACHIEVEMENT_UNLOCKED_OFFSET_FROM_NAME
 			return {
 				symbols = symbols_line_offset,
-				name = name_line_offset,
-				unlocked = unlocked_line_offset,
-				description = unlocked_line_offset + ACHIEVEMENT_DESCRIPTION_OFFSET_FROM_UNLOCKED,
 			}
 		end
 	end
@@ -142,20 +141,60 @@ local function shuffled_achievement_highlight_groups()
 	return groups
 end
 
+---@param text string
+---@param maximum_width number
+---@return string
+local function truncate_to_display_width(text, maximum_width)
+	if vim.fn.strdisplaywidth(text) <= maximum_width then
+		return text
+	end
+
+	local suffix_width = vim.fn.strdisplaywidth(HEADER_CONTENT_TRUNCATION_SUFFIX)
+	local truncated = ""
+	local char_index = BUFFER_START_LINE
+	while char_index < vim.fn.strchars(text) do
+		local character = vim.fn.strcharpart(text, char_index, NEXT_LINE_OFFSET)
+		if vim.fn.strdisplaywidth(truncated .. character) + suffix_width > maximum_width then
+			break
+		end
+		truncated = truncated .. character
+		char_index = char_index + NEXT_LINE_OFFSET
+	end
+
+	return truncated .. HEADER_CONTENT_TRUNCATION_SUFFIX
+end
+
+---@param text string
+---@return string
+local function header_content_line(text)
+	local content = truncate_to_display_width(text, HEADER_CONTENT_WIDTH)
+	local remaining_width = HEADER_CONTENT_WIDTH - vim.fn.strdisplaywidth(content)
+	local left_padding = math.floor(remaining_width / CENTER_DIVISOR)
+	local right_padding = remaining_width - left_padding
+	return HEADER_LEFT_BORDER
+		.. string.rep(" ", left_padding)
+		.. content
+		.. string.rep(" ", right_padding)
+		.. HEADER_RIGHT_BORDER
+end
+
+---@param achievement table
+---@param details table
+---@return string[]
+local function achievement_details_text(achievement, details)
+	return {
+		achievement.name,
+		details.unlocked_at and "Unlocked: " .. details.unlocked_at or "",
+		details.description or "",
+	}
+end
+
 ---Loads achievements from GitHub's full achievements page without blocking the
 ---dashboard while the request and parsing complete.
 ---@param buf_id number
 ---@param username string GitHub username
 ---@param achievements_line_idx number 0-based line index
-function M.load_achievements(
-	buf_id,
-	username,
-	achievement_symbols_line_idx,
-	achievement_name_line_idx,
-	achievement_unlocked_line_idx,
-	achievement_description_line_idx,
-	chars
-)
+function M.load_achievements(buf_id, username, achievement_symbols_line_idx, chars, set_header_details)
 	GithubService.fetch_achievements(username, function(achievements)
 		if not vim.api.nvim_buf_is_valid(buf_id) then
 			return
@@ -206,41 +245,15 @@ function M.load_achievements(
 		local group = vim.api.nvim_create_augroup(ACHIEVEMENTS_CURSOR_GROUP, { clear = false })
 		local achievement_details = {}
 		local selected_achievement
-		local function update_detail_line(line_idx, text, hl_group)
-			local pad = pad_for_line(vim.api.nvim_win_get_width(CURRENT_WINDOW_ID), text)
-			buffer_helpers.update_line(buf_id, line_idx, string.rep(" ", pad) .. text)
-			M.apply_highlights(buf_id, {
-				{
-					line = BUFFER_START_LINE,
-					col_start = BUFFER_START_LINE,
-					col_end = HIGHLIGHT_TO_END_OF_LINE,
-					hl_group = hl_group,
-				},
-			}, line_idx, pad)
-		end
 
 		local function show_achievement_details(achievement)
 			local details = achievement_details[achievement.details_url]
 			if details then
-				update_detail_line(
-					achievement_unlocked_line_idx,
-					details.unlocked_at and ACHIEVEMENT_UNLOCKED_PREFIX .. details.unlocked_at or "",
-					"GHDashboardAchievementDetails"
-				)
-				update_detail_line(
-					achievement_description_line_idx,
-					details.description or "",
-					"GHDashboardAchievementDetails"
-				)
+				set_header_details("achievement", achievement_details_text(achievement, details))
 				return
 			end
 
-			update_detail_line(
-				achievement_unlocked_line_idx,
-				ACHIEVEMENT_DETAILS_LOADING_MESSAGE,
-				"GHDashboardAchievementDetails"
-			)
-			update_detail_line(achievement_description_line_idx, "", "GHDashboardAchievementDetails")
+			set_header_details("achievement", { achievement.name, ACHIEVEMENT_DETAILS_LOADING_MESSAGE, "" })
 			GithubService.fetch_achievement_details(achievement.details_url, function(fetched_details)
 				achievement_details[achievement.details_url] = fetched_details
 				if selected_achievement == achievement then
@@ -248,7 +261,7 @@ function M.load_achievements(
 				end
 			end, function()
 				if selected_achievement == achievement then
-					update_detail_line(achievement_unlocked_line_idx, "", "GHDashboardAchievementDetails")
+					set_header_details("achievement", { achievement.name, "", "" })
 				end
 			end)
 		end
@@ -270,16 +283,10 @@ function M.load_achievements(
 				end
 
 				selected_achievement = achievement
-				update_detail_line(
-					achievement_name_line_idx,
-					achievement and achievement.name or "",
-					"GHDashboardAchievementDescription"
-				)
 				if achievement then
 					show_achievement_details(achievement)
 				else
-					update_detail_line(achievement_unlocked_line_idx, "", "GHDashboardAchievementDetails")
-					update_detail_line(achievement_description_line_idx, "", "GHDashboardAchievementDetails")
+					set_header_details("achievement", "")
 				end
 			end,
 		})
@@ -346,11 +353,7 @@ end
 ---@param header_height number
 ---@return number
 local function dashboard_content_height(header_height)
-	return header_height
-		+ CONTRIBUTIONS_GRAPH_HEIGHT
-		+ GRAPH_SEPARATOR_HEIGHT
-		+ ACTIVITY_GRAPH_HEIGHT
-		+ CURSOR_DETAILS_HEIGHT
+	return header_height + CONTRIBUTIONS_GRAPH_HEIGHT + GRAPH_SEPARATOR_HEIGHT + ACTIVITY_GRAPH_HEIGHT
 end
 
 ---Prepends the given per-line paddings to each line (skipping blanks, see
@@ -394,7 +397,9 @@ function M.create_header(year, username, win_width)
 		header_lines,
 		"┌──────────────────────────────────────────────────────────────┐"
 	)
-	table.insert(header_lines, "│                      GitHub Contributions                    │")
+	for line_index = FIRST_LUA_INDEX, HEADER_CONTENT_LINE_COUNT do
+		table.insert(header_lines, header_content_line(HEADER_DEFAULT_CONTENT[line_index]))
+	end
 	table.insert(
 		header_lines,
 		"└──────────────────────────────────────────────────────────────┘"
@@ -405,8 +410,6 @@ function M.create_header(year, username, win_width)
 	table.insert(header_lines, "")
 	table.insert(header_lines, ACHIEVEMENTS_TITLE)
 	table.insert(header_lines, ACHIEVEMENTS_LOADING_MESSAGE)
-	table.insert(header_lines, "")
-	table.insert(header_lines, "")
 	table.insert(header_lines, "")
 
 	return header_lines
@@ -496,6 +499,74 @@ function M.get_header_highlights(header_lines)
 	end
 
 	return highlights
+end
+
+---Updates the header content and applies the normal or active box color.
+---@param buf_id number
+---@param first_line_idx number 0-based buffer line index
+---@param horizontal_pad number
+---@param content string[]
+---@param active boolean
+function M.update_header_details(buf_id, first_line_idx, horizontal_pad, content, active)
+	local border_group = active and "GHDashboardHeaderBorderActive" or "GHDashboardHeaderBorder"
+	local border_len = #HEADER_LEFT_BORDER
+	local top_border_line_idx = first_line_idx + HEADER_TOP_BORDER_OFFSET
+	local bottom_border_line_idx = first_line_idx + HEADER_BOTTOM_BORDER_OFFSET
+	local content_lines = {}
+	local highlights = {
+		{
+			line = HEADER_TOP_BORDER_OFFSET,
+			col_start = BUFFER_START_LINE,
+			col_end = HIGHLIGHT_TO_END_OF_LINE,
+			hl_group = border_group,
+		},
+	}
+
+	for line_offset = BUFFER_START_LINE, HEADER_CONTENT_LINE_COUNT - FIRST_LUA_INDEX do
+		local content_line = header_content_line(content[line_offset + FIRST_LUA_INDEX] or "")
+		table.insert(content_lines, string.rep(" ", horizontal_pad) .. content_line)
+		table.insert(highlights, {
+			line = line_offset,
+			col_start = BUFFER_START_LINE,
+			col_end = border_len,
+			hl_group = border_group,
+		})
+		table.insert(highlights, {
+			line = line_offset,
+			col_start = border_len,
+			col_end = #content_line - border_len,
+			hl_group = "GHDashboardHeaderTitle",
+		})
+		table.insert(highlights, {
+			line = line_offset,
+			col_start = #content_line - border_len,
+			col_end = HIGHLIGHT_TO_END_OF_LINE,
+			hl_group = border_group,
+		})
+	end
+	table.insert(highlights, {
+		line = HEADER_BOTTOM_BORDER_OFFSET,
+		col_start = BUFFER_START_LINE,
+		col_end = HIGHLIGHT_TO_END_OF_LINE,
+		hl_group = border_group,
+	})
+
+	buffer_helpers.with_modifiable_buffer(buf_id, function()
+		vim.api.nvim_buf_set_lines(
+			buf_id,
+			first_line_idx,
+			first_line_idx + HEADER_CONTENT_LINE_COUNT,
+			false,
+			content_lines
+		)
+	end)
+	vim.api.nvim_buf_clear_namespace(
+		buf_id,
+		M.namespace,
+		top_border_line_idx,
+		bottom_border_line_idx + NEXT_LINE_OFFSET
+	)
+	M.apply_highlights(buf_id, highlights, first_line_idx, horizontal_pad)
 end
 
 ---Applies a list of `{ line, col_start, col_end, hl_group }` or
@@ -705,11 +776,6 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	table.insert(dashboard_lines, "")
 	append_section(dashboard_lines, activity_graph_lines, ACTIVITY_GRAPH_HEIGHT)
 
-	-- Add empty lines for cursor position info
-	for _ = FIRST_LUA_INDEX, CURSOR_DETAILS_HEIGHT do
-		table.insert(dashboard_lines, "")
-	end
-
 	-- Center everything horizontally relative to the full window width, and
 	-- the whole block vertically. Header lines (title/frame, "User: ...",
 	-- "Year: ...") vary a lot in width, so each is centered independently -
@@ -745,13 +811,10 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 	for i = FIRST_LUA_INDEX, #activity_graph_lines do
 		dashboard_pads[#header_lines + #contributions_graph_lines + NEXT_LINE_OFFSET + i] = activity_pads[i]
 	end
-	dashboard_pads[#dashboard_lines] = BUFFER_START_LINE
 
 	local vertical_pad = top_empty_lines + vertical_pad_for(ai_panel_line_idx, dashboard_content_height(#header_lines))
 	local achievement_symbols_line_idx = vertical_pad + achievement_offsets.symbols
-	local achievement_name_line_idx = vertical_pad + achievement_offsets.name
-	local achievement_unlocked_line_idx = vertical_pad + achievement_offsets.unlocked
-	local achievement_description_line_idx = vertical_pad + achievement_offsets.description
+	local header_details_first_line_idx = vertical_pad + HEADER_FIRST_CONTENT_LINE_OFFSET
 
 	local centered_lines = {}
 	for _ = FIRST_LUA_INDEX, vertical_pad do
@@ -787,14 +850,42 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 
 	-- Set up cursor position tracking (need to adjust height calculation)
 	local graph_start_line = vertical_pad + #header_lines
-	local cursor_tracking_height = graph_start_line + CONTRIBUTIONS_GRAPH_HEIGHT + ACTIVITY_GRAPH_HEIGHT
+	local active_header_details_source
+	local function set_header_details(source, content)
+		if content == "" then
+			if active_header_details_source ~= source then
+				return
+			end
+			active_header_details_source = nil
+			M.update_header_details(
+				buf_id,
+				header_details_first_line_idx,
+				header_pads[HEADER_FIRST_CONTENT_LINE_OFFSET + FIRST_LUA_INDEX],
+				HEADER_DEFAULT_CONTENT,
+				false
+			)
+			return
+		end
+
+		active_header_details_source = source
+		M.update_header_details(
+			buf_id,
+			header_details_first_line_idx,
+			header_pads[HEADER_FIRST_CONTENT_LINE_OFFSET + FIRST_LUA_INDEX],
+			content,
+			true
+		)
+	end
 	M.setup_cursor_tracking(
 		buf_id,
 		contributions_graph,
 		activity_graph,
-		cursor_tracking_height,
+		BUFFER_START_LINE,
 		contributions_pad,
-		graph_start_line
+		graph_start_line,
+		function(tooltip)
+			set_header_details("contribution", tooltip ~= "" and { "", tooltip, "" } or "")
+		end
 	)
 
 	local ai_usage_requested = false
@@ -860,15 +951,7 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 		nowait = true,
 	})
 
-	M.load_achievements(
-		buf_id,
-		username,
-		achievement_symbols_line_idx,
-		achievement_name_line_idx,
-		achievement_unlocked_line_idx,
-		achievement_description_line_idx,
-		achievement_chars
-	)
+	M.load_achievements(buf_id, username, achievement_symbols_line_idx, achievement_chars, set_header_details)
 	focus_menu(buf_id, vertical_pad, header_pads[FIRST_LUA_INDEX])
 end
 
@@ -959,15 +1042,25 @@ end
 ---@param total_height number
 ---@param horizontal_pad number|nil defaults to 0
 ---@param graph_start_line number|nil defaults to the pre-reserved-layout graph position
+---@param update_details fun(tooltip: string)|nil
 function M.setup_cursor_tracking(
 	buf_id,
 	contributions_graph,
 	activity_graph,
 	total_height,
 	horizontal_pad,
-	graph_start_line
+	graph_start_line,
+	update_details
 )
-	CursorTracking.setup(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad, graph_start_line)
+	CursorTracking.setup(
+		buf_id,
+		contributions_graph,
+		activity_graph,
+		total_height,
+		horizontal_pad,
+		graph_start_line,
+		update_details
+	)
 end
 
 ---Converts global cursor position to graph-local coordinates
@@ -986,13 +1079,15 @@ end
 ---@param total_height number
 ---@param horizontal_pad number|nil defaults to 0
 ---@param graph_start_line number|nil defaults to the pre-reserved-layout graph position
+---@param update_details fun(tooltip: string)|nil
 function M.update_contribution_details(
 	buf_id,
 	contributions_graph,
 	activity_graph,
 	total_height,
 	horizontal_pad,
-	graph_start_line
+	graph_start_line,
+	update_details
 )
 	CursorTracking.update_contribution_details(
 		buf_id,
@@ -1000,7 +1095,8 @@ function M.update_contribution_details(
 		activity_graph,
 		total_height,
 		horizontal_pad,
-		graph_start_line
+		graph_start_line,
+		update_details
 	)
 end
 

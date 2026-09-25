@@ -14,6 +14,9 @@ describe("dashboard-view", function()
 			assert.matches("%[C%] Contributions", joined)
 			assert.matches("%[A%] AI", joined)
 			assert.equals(string.rep("─", 80), lines[2])
+			assert.equals("│                                                              │", lines[4])
+			assert.equals("│                       GitHub Dashboard                       │", lines[5])
+			assert.equals("│                                                              │", lines[6])
 			assert.matches("User: octocat", joined)
 			assert.matches("achievements", joined)
 			assert.matches("Loading achievements%.%.%.", joined)
@@ -133,6 +136,7 @@ describe("dashboard-view", function()
 			local user_line_idx
 			local year_line_idx
 			local achievements_title_idx
+			local header_details_line_idx
 			for i, line in ipairs(lines) do
 				if line:find("User: octocat", 1, true) then
 					user_line_idx = i
@@ -140,6 +144,8 @@ describe("dashboard-view", function()
 					year_line_idx = i
 				elseif line:find("Achievements", 1, true) then
 					achievements_title_idx = i
+				elseif line:find("GitHub Dashboard", 1, true) then
+					header_details_line_idx = i
 				end
 			end
 			assert.equals(user_line_idx + 1, year_line_idx)
@@ -157,9 +163,11 @@ describe("dashboard-view", function()
 			assert.is_true(vim.wait(300, function()
 				local rendered = table.concat(vim.api.nvim_buf_get_lines(buf_id, 0, -1, false), "\n")
 				return (rendered:find("Pull Shark", 1, true) ~= nil or rendered:find("YOLO", 1, true) ~= nil)
-					and rendered:find("Unlocked: 2024-03-18T12:20:54Z", 1, true) ~= nil
 					and rendered:find("You want it? You merge it.", 1, true) ~= nil
 			end))
+			lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
+			assert.is_true(lines[header_details_line_idx - 1]:find("Pull Shark", 1, true) ~= nil)
+			assert.is_true(lines[header_details_line_idx + 1]:find("You want it? You merge it.", 1, true) ~= nil)
 
 			GithubService.fetch_achievements = original_fetch_achievements
 			GithubService.fetch_achievement_details = original_fetch_achievement_details
@@ -325,13 +333,17 @@ describe("dashboard-view", function()
 			vim.api.nvim_win_set_cursor(0, { menu_line, contributions_button_col })
 			vim.api.nvim_feedkeys(vim.keycode("<CR>"), "x", false)
 			assert.same({ graph_line, graph_col }, vim.api.nvim_win_get_cursor(0))
+			vim.api.nvim_exec_autocmds("CursorMoved", { buffer = buf_id })
+			lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
+			assert.matches("5 contributions on January 21%.", table.concat(lines, "\n"))
+			assert.matches("^%s*%[C%] Contributions%s+%[A%] AI%s+%[V%] Achievements%s*$", lines[menu_line])
 
 			vim.api.nvim_buf_delete(buf_id, { force = true })
 		end)
 	end)
 
 	describe("cursor tracking", function()
-		it("centers contribution details in the dashboard window", function()
+		it("sends contribution details to the configured header callback", function()
 			local buf_id = vim.api.nvim_create_buf(false, true)
 			vim.api.nvim_set_current_buf(buf_id)
 			vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, vim.fn["repeat"]({ "" }, 20))
@@ -349,11 +361,52 @@ describe("dashboard-view", function()
 			local total_height = 14
 			vim.api.nvim_win_set_cursor(0, { 8, 0 })
 
-			CursorTracking.update_contribution_details(buf_id, contributions_graph, activity_graph, total_height, 0)
+			local displayed_tooltip
+			CursorTracking.update_contribution_details(
+				buf_id,
+				contributions_graph,
+				activity_graph,
+				total_height,
+				0,
+				nil,
+				function(details)
+					displayed_tooltip = details
+				end
+			)
 
-			local expected_pad = math.floor((vim.api.nvim_win_get_width(0) - vim.fn.strdisplaywidth(tooltip)) / 2)
-			local detail_line = vim.api.nvim_buf_get_lines(buf_id, total_height + 2, total_height + 3, false)[1]
-			assert.equals(string.rep(" ", expected_pad) .. tooltip, detail_line)
+			assert.equals(tooltip, displayed_tooltip)
+
+			vim.api.nvim_buf_delete(buf_id, { force = true })
+		end)
+
+		it("replaces all header content lines without clearing menu buttons", function()
+			local buf_id = vim.api.nvim_create_buf(false, true)
+			local menu = "[C] Contributions  [A] AI  [V] Achievements"
+			vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, {
+				menu,
+				"┌──────────────────────────────────────────────────────────────┐",
+				"│                                                              │",
+				"│                                                              │",
+				"│                                                              │",
+				"└──────────────────────────────────────────────────────────────┘",
+			})
+
+			DashboardView.update_header_details(
+				buf_id,
+				2,
+				0,
+				{ "5 contributions on January 21.", "Contribution detail", "Third detail line" },
+				true
+			)
+
+			local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
+			assert.equals(menu, lines[1])
+			assert.matches("5 contributions on January 21%.", lines[3])
+			assert.matches("Contribution detail", lines[4])
+			assert.matches("Third detail line", lines[5])
+			assert.equals(64, vim.fn.strdisplaywidth(lines[3]))
+			assert.equals(64, vim.fn.strdisplaywidth(lines[4]))
+			assert.equals(64, vim.fn.strdisplaywidth(lines[5]))
 
 			vim.api.nvim_buf_delete(buf_id, { force = true })
 		end)

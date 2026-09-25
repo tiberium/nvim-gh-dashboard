@@ -18,7 +18,16 @@ local CENTER_DIVISOR = 2
 ---@param total_height number
 ---@param horizontal_pad number|nil defaults to 0
 ---@param graph_start_line number|nil defaults to the pre-reserved-layout graph position
-function M.setup(buf_id, contributions_graph, activity_graph, total_height, horizontal_pad, graph_start_line)
+---@param update_details fun(tooltip: string)|nil
+function M.setup(
+	buf_id,
+	contributions_graph,
+	activity_graph,
+	total_height,
+	horizontal_pad,
+	graph_start_line,
+	update_details
+)
 	-- Create autocommand group for this buffer
 	local group = vim.api.nvim_create_augroup("GHDashboardCursor", { clear = false })
 
@@ -33,7 +42,8 @@ function M.setup(buf_id, contributions_graph, activity_graph, total_height, hori
 				activity_graph,
 				total_height,
 				horizontal_pad,
-				graph_start_line
+				graph_start_line,
+				update_details
 			)
 		end,
 	})
@@ -70,13 +80,15 @@ end
 ---@param total_height number
 ---@param horizontal_pad number|nil defaults to 0
 ---@param graph_start_line number|nil defaults to the pre-reserved-layout graph position
+---@param update_details fun(tooltip: string)|nil
 function M.update_contribution_details(
 	buf_id,
 	contributions_graph,
 	activity_graph,
 	total_height,
 	horizontal_pad,
-	graph_start_line
+	graph_start_line,
+	update_details
 )
 	graph_start_line = graph_start_line or (total_height - contributions_graph.height - activity_graph.height)
 	local line, col = M.get_graph_cursor_position(graph_start_line, horizontal_pad)
@@ -87,6 +99,11 @@ function M.update_contribution_details(
 		if selected_contribution then
 			tooltip = selected_contribution.tooltip
 		end
+	end
+
+	if update_details then
+		update_details(tooltip)
+		return
 	end
 
 	local tooltip_pad = math.max(
