@@ -14,6 +14,7 @@ local GLOBAL_HIGHLIGHT_NAMESPACE = 0
 M.defaults = {
 	-- Header
 	GHDashboardHeaderBorder = { link = "FloatBorder" },
+	GHDashboardHeaderBorderActive = { link = "GHDashboardHigh" },
 	GHDashboardHeaderTitle = { link = "Title" },
 	GHDashboardHeaderLabel = { link = "Comment" },
 	GHDashboardHeaderValue = { link = "Identifier" },
@@ -21,8 +22,6 @@ M.defaults = {
 	GHDashboardAchievementsBorder = { link = "NonText" },
 	GHDashboardAchievementsEmpty = { link = "Comment" },
 	GHDashboardAchievementsError = { link = "DiagnosticError" },
-	GHDashboardAchievementDescription = { link = "Identifier" },
-	GHDashboardAchievementDetails = { link = "Comment" },
 	GHDashboardAchievementSymbol1 = { link = "String", bold = true },
 	GHDashboardAchievementSymbol2 = { link = "Function", bold = true },
 	GHDashboardAchievementSymbol3 = { link = "DiagnosticHint", bold = true },

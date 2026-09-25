@@ -23,6 +23,7 @@ An explicit foreground or background color replaces the default link.
 | Highlight group | Default link | Used for |
 |---|---|---|
 | `GHDashboardHeaderBorder` | `FloatBorder` | Header box border |
+| `GHDashboardHeaderBorderActive` | `GHDashboardHigh` | Header box border while showing contribution or achievement details |
 | `GHDashboardHeaderTitle` | `Title` | Header title |
 | `GHDashboardHeaderLabel` | `Comment` | `User:` and `Year:` labels |
 | `GHDashboardHeaderValue` | `Identifier` | Username and year values |
@@ -30,8 +31,6 @@ An explicit foreground or background color replaces the default link.
 | `GHDashboardAchievementsBorder` | `NonText` | Achievements border |
 | `GHDashboardAchievementsEmpty` | `Comment` | Empty achievements state |
 | `GHDashboardAchievementsError` | `DiagnosticError` | Achievements error state |
-| `GHDashboardAchievementDescription` | `Identifier` | Selected achievement name |
-| `GHDashboardAchievementDetails` | `Comment` | Achievement unlock date and description |
 | `GHDashboardAchievementSymbol1` | `String` (bold) | Achievement badge |
 | `GHDashboardAchievementSymbol2` | `Function` (bold) | Achievement badge |
 | `GHDashboardAchievementSymbol3` | `DiagnosticHint` (bold) | Achievement badge |
