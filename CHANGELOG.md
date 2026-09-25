@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.7.0...v1.8.0) (2026-09-25)
+
+
+### Features
+
+* Add notifications panel ([#32](https://github.com/tiberium/nvim-gh-dashboard/issues/32)) ([e3fbd02](https://github.com/tiberium/nvim-gh-dashboard/commit/e3fbd02d2cad67e6b8ce2c49345adcc07a95882a))
+
 ## [1.7.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.6.1...v1.7.0) (2026-09-22)
 
 
