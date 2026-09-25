@@ -4,7 +4,7 @@ local M = {}
 
 ---Builds a fake GitHub contributions page containing the given tool-tips.
 ---@param entries table[] list of { day = string, week = string, tooltip = string }
----@param opts table|nil { with_activity = boolean, achievements = string[] }
+---@param opts table|nil { with_activity = boolean, achievements = string[], followers = string, following = string }
 ---@return string
 function M.page(entries, opts)
 	opts = opts or {}
@@ -19,6 +19,23 @@ function M.page(entries, opts)
 				.. "data-percentages="
 				.. '"{&quot;Commits&quot;:70,&quot;Code review&quot;:10,&quot;Pull requests&quot;:15,&quot;Issues&quot;:5}"'
 				.. "></div>"
+		)
+	end
+
+	if opts.followers and opts.following then
+		table.insert(
+			parts,
+			string.format(
+				'<a class="Link--secondary" href="/octocat?tab=followers"><span class="text-bold">%s</span> followers</a>',
+				opts.followers
+			)
+		)
+		table.insert(
+			parts,
+			string.format(
+				'<a class="Link--secondary" href="/octocat?tab=following"><span class="text-bold">%s</span> following</a>',
+				opts.following
+			)
 		)
 	end
 

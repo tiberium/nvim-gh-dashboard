@@ -45,6 +45,23 @@ describe("github-service", function()
 			assert.equals(5, activity.issues)
 		end)
 
+		describe("parse_profile_details", function()
+			it("extracts followers and following from profile links", function()
+				local html = fixtures.page({}, { followers = "1.2k", following = "42" })
+
+				local profile_details = GithubService.parse_profile_details(html)
+
+				assert.same({
+					followers = "1.2k",
+					following = "42",
+				}, profile_details)
+			end)
+
+			it("returns nil when either profile statistic is missing", function()
+				assert.is_nil(GithubService.parse_profile_details('<a href="/octocat?tab=followers">42 followers</a>'))
+			end)
+		end)
+
 		it("returns nil when the activity container is missing", function()
 			local html = fixtures.page(fixtures.sample_entries, { with_activity = false })
 
@@ -97,13 +114,14 @@ describe("github-service", function()
 
 	describe("parse_dashboard_data", function()
 		it("combines contributions and activity from a single page", function()
-			local html = fixtures.page(fixtures.sample_entries)
+			local html = fixtures.page(fixtures.sample_entries, { followers = "1.2k", following = "42" })
 
-			local data = GithubService.parse_dashboard_data(html)
+			local data = GithubService.parse_dashboard_data(html, html)
 
 			assert.equals(3, #data.contributions)
 			assert.is_not_nil(data.activity)
 			assert.equals(70, data.activity.commits)
+			assert.same({ followers = "1.2k", following = "42" }, data.profile_details)
 		end)
 	end)
 
@@ -227,16 +245,16 @@ describe("github-service", function()
 			end)
 
 			assert.is_not_nil(second_result)
-			assert.equals(1, get_calls)
+			assert.equals(2, get_calls)
 		end)
 
-		it("fetches once and resolves both contributions and activity on success", function()
+		it("fetches contribution and profile pages before resolving dashboard data", function()
 			local html = fixtures.page(fixtures.sample_entries)
-			local requested_url
+			local requested_urls = {}
 
 			package.loaded["plenary.curl"] = {
 				get = function(url, opts)
-					requested_url = url
+					table.insert(requested_urls, url)
 					opts.callback({ status = 200, body = html })
 				end,
 			}
@@ -255,8 +273,11 @@ describe("github-service", function()
 			assert.is_not_nil(result)
 			assert.equals(3, #result.contributions)
 			assert.is_not_nil(result.activity)
-			assert.matches("octocat", requested_url)
-			assert.matches("2024%-12%-01", requested_url)
+			assert.is_nil(result.profile_details)
+			assert.same({
+				"https://github.com/octocat?tab=contributions&from=2024-12-01",
+				"https://github.com/octocat",
+			}, requested_urls)
 		end)
 
 		it("calls on_error when the response status is not 200", function()

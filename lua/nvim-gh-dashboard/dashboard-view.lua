@@ -69,6 +69,16 @@ local MENU_BUTTONS = {
 	{ shortcut = "V", label = "Achievements" },
 }
 
+---@param profile_details ProfileDetails|nil
+---@return string
+local function profile_details_line(profile_details)
+	if not profile_details then
+		return ""
+	end
+
+	return string.format("Followers: %s | Following: %s", profile_details.followers, profile_details.following)
+end
+
 local function menu_line()
 	local buttons = {}
 	for _, button in ipairs(MENU_BUTTONS) do
@@ -387,8 +397,9 @@ end
 ---@param year number
 ---@param username string
 ---@param win_width number
+---@param profile_details ProfileDetails|nil
 ---@return string[]
-function M.create_header(year, username, win_width)
+function M.create_header(year, username, win_width, profile_details)
 	local header_lines = {}
 
 	table.insert(header_lines, menu_line())
@@ -407,6 +418,7 @@ function M.create_header(year, username, win_width)
 	table.insert(header_lines, "")
 	table.insert(header_lines, "User: " .. username)
 	table.insert(header_lines, "Year: " .. year)
+	table.insert(header_lines, profile_details_line(profile_details))
 	table.insert(header_lines, "")
 	table.insert(header_lines, ACHIEVEMENTS_TITLE)
 	table.insert(header_lines, ACHIEVEMENTS_LOADING_MESSAGE)
@@ -748,7 +760,17 @@ end
 ---@param year number
 ---@param username string
 ---@param chars table Characters configuration
-function M.render_dashboard(buf_id, contributions, activities, year, username, chars, achievement_chars)
+---@param profile_details ProfileDetails|nil
+function M.render_dashboard(
+	buf_id,
+	contributions,
+	activities,
+	year,
+	username,
+	chars,
+	achievement_chars,
+	profile_details
+)
 	if not vim.api.nvim_buf_is_valid(buf_id) then
 		return
 	end
@@ -765,7 +787,7 @@ function M.render_dashboard(buf_id, contributions, activities, year, username, c
 		BUFFER_START_LINE,
 		win_height - ai_usage_height - bottom_empty_lines - AI_PANEL_SEPARATOR_OFFSET_FROM_BOTTOM
 	)
-	local header_lines = M.create_header(year, username, win_width)
+	local header_lines = M.create_header(year, username, win_width, profile_details)
 	achievement_chars = achievement_chars or DEFAULT_ACHIEVEMENT_CHARS
 	local achievement_offsets = achievement_line_offsets(header_lines)
 
@@ -1026,7 +1048,16 @@ function M.open_dashboard(username, year, chars, achievement_chars)
 			end
 		end
 
-		M.render_dashboard(buf_id, contributions, data.activity, year, username, chars, achievement_chars)
+		M.render_dashboard(
+			buf_id,
+			contributions,
+			data.activity,
+			year,
+			username,
+			chars,
+			achievement_chars,
+			data.profile_details
+		)
 	end, function(message)
 		M.stop_spinner(timer)
 		M.render_error(buf_id, message)
