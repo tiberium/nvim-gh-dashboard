@@ -91,6 +91,34 @@ describe("github-service", function()
 			}, achievements)
 		end)
 
+		describe("parse_repositories", function()
+			it("extracts popular repository names, star counts, and languages", function()
+				local html = [[
+					<h2>Popular repositories</h2>
+					<ol class="d-flex">
+						<li class="col-12">
+							<span class="position-relative"><a href="/octocat/nvim-gh-dashboard">
+								<span class="repo">nvim-gh-dashboard</span>
+							</a></span>
+							<span itemprop="programmingLanguage">Lua</span>
+							<a href="/octocat/nvim-gh-dashboard/stargazers"><svg></svg>42</a>
+						</li>
+						<li class="col-12">
+							<span class="position-relative"><a href="/octocat/dotfiles">
+								<span class="repo">dotfiles</span>
+							</a></span>
+							<span itemprop="programmingLanguage">Shell</span>
+						</li>
+					</ol>
+				]]
+
+				assert.same({
+					{ name = "nvim-gh-dashboard", stars = "42", language = "Lua" },
+					{ name = "dotfiles", stars = "0", language = "Shell" },
+				}, GithubService.parse_repositories(html))
+			end)
+		end)
+
 		it("ignores images that are not achievement badges", function()
 			local html = '<img alt="Achievement: Not a badge"><img data-hovercard-type="achievement" alt="Avatar">'
 
@@ -114,7 +142,11 @@ describe("github-service", function()
 
 	describe("parse_dashboard_data", function()
 		it("combines contributions and activity from a single page", function()
-			local html = fixtures.page(fixtures.sample_entries, { followers = "1.2k", following = "42" })
+			local html = fixtures.page(fixtures.sample_entries, {
+				followers = "1.2k",
+				following = "42",
+				repositories = { { name = "nvim-gh-dashboard", stars = "42", language = "Lua" } },
+			})
 
 			local data = GithubService.parse_dashboard_data(html, html)
 
@@ -122,6 +154,7 @@ describe("github-service", function()
 			assert.is_not_nil(data.activity)
 			assert.equals(70, data.activity.commits)
 			assert.same({ followers = "1.2k", following = "42" }, data.profile_details)
+			assert.same({ { name = "nvim-gh-dashboard", stars = "42", language = "Lua" } }, data.repositories)
 		end)
 	end)
 

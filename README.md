@@ -11,6 +11,7 @@ A Neovim dashboard for public GitHub profile data, rendered as ASCII art.
 - 👥 **Profile statistics** for followers and following
 - 🏆 **Achievements** with unlock date and description on selection
 - 💳 **AI Usage**: included credits, over-pool credits, and additional budget
+- 📚 **Popular repositories**: repository name, stars, and primary language
 - 🎨 **Colorful UI** that inherits and can override your colorscheme
 - 🚀 **Fast** async loading with spinners, so Neovim stays responsive
 
@@ -64,8 +65,8 @@ require("nvim-gh-dashboard").setup({
 
 The dashboard is read-only. Move through the contribution graph with normal
 cursor motions to see the selected day's details. Its menu is focused when the
-dashboard opens; use `C`, `A`, or `V`, or press `<Enter>` on a menu shortcut,
-to focus Contributions, load AI Usage, or focus Achievements respectively.
+dashboard opens; use `C`, `A`, `R`, or `V`, or press `<Enter>` on a menu shortcut,
+to focus Contributions, load AI Usage, show popular Repositories, or focus Achievements respectively.
 Achievements load automatically; moving over a badge loads its details. AI
 Usage is requested only after you select it.
 

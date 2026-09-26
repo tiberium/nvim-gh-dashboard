@@ -4,7 +4,8 @@ local M = {}
 
 ---Builds a fake GitHub contributions page containing the given tool-tips.
 ---@param entries table[] list of { day = string, week = string, tooltip = string }
----@param opts table|nil { with_activity = boolean, achievements = string[], followers = string, following = string }
+---@param opts table|nil
+---{ with_activity = boolean, achievements = string[], followers = string, following = string, repositories = table[] }
 ---@return string
 function M.page(entries, opts)
 	opts = opts or {}
@@ -60,6 +61,22 @@ function M.page(entries, opts)
 					.. 'alt="Achievement: %s" class="achievement-badge-sidebar">',
 				achievement:lower():gsub(" ", "-"),
 				achievement
+			)
+		)
+	end
+
+	for _, repository in ipairs(opts.repositories or {}) do
+		table.insert(
+			parts,
+			string.format(
+				'<li itemprop="owns"><a itemprop="name codeRepository" href="/octocat/%s">%s</a>'
+					.. '<a href="/octocat/%s/stargazers">%s</a>'
+					.. '<span itemprop="programmingLanguage">%s</span></li>',
+				repository.name,
+				repository.name,
+				repository.name,
+				repository.stars,
+				repository.language
 			)
 		)
 	end

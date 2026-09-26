@@ -60,6 +60,15 @@ M.defaults = {
 	GHDashboardAiUsageLabel = { link = "Identifier" },
 	GHDashboardAiUsageBorder = { link = "NonText" },
 	GHDashboardAiUsageValue = { link = "Number" },
+
+	-- Popular repositories
+	GHDashboardRepositoriesTitle = { link = "Title" },
+	GHDashboardRepository1 = { link = "String", bold = true },
+	GHDashboardRepository2 = { link = "Function", bold = true },
+	GHDashboardRepository3 = { link = "DiagnosticHint", bold = true },
+	GHDashboardRepository4 = { link = "DiagnosticInfo", bold = true },
+	GHDashboardRepository5 = { link = "DiagnosticOk", bold = true },
+	GHDashboardRepository6 = { link = "DiagnosticWarn", bold = true },
 }
 
 ---Sets up (defines) all the highlight groups used by the dashboard, applying
