@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.10.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.9.0...v1.10.0) (2026-09-26)
+
+
+### Features
+
+* Add popular repositories ([#36](https://github.com/tiberium/nvim-gh-dashboard/issues/36)) ([4b9a142](https://github.com/tiberium/nvim-gh-dashboard/commit/4b9a142e556bde3b71d70709b00ea2734f2de086))
+
 ## [1.9.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.8.0...v1.9.0) (2026-09-25)
 
 
