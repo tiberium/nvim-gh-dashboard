@@ -311,11 +311,11 @@ describe("dashboard-view", function()
 				end
 			end
 			assert.is_not_nil(separator_idx)
-			assert.same({ "", "" }, { lines[#lines - 1], lines[#lines] })
+			assert.equals(separator, lines[#lines])
 
 			local ai_menu_line
 			for i, line in ipairs(lines) do
-				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s+%[V%] Achievements%s*$") then
+				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s+%[R%] Repositories%s+%[V%] Achievements%s*$") then
 					ai_menu_line = i
 					break
 				end
@@ -352,6 +352,61 @@ describe("dashboard-view", function()
 			vim.api.nvim_buf_delete(buf_id, { force = true })
 		end)
 
+		it("shows at most six popular repositories in the available panel lines", function()
+			local buf_id = vim.api.nvim_create_buf(false, true)
+			vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, vim.fn["repeat"]({ "" }, 7))
+			local repositories = {}
+			for index = 1, 7 do
+				table.insert(repositories, {
+					name = "repository-" .. index,
+					stars = tostring(index),
+					language = "Lua",
+				})
+			end
+
+			DashboardView.load_repositories(buf_id, repositories, 0, 7)
+
+			local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
+			local rendered = table.concat(lines, "\n")
+			assert.matches("Popular repositories", lines[2])
+			assert.matches("repository%-1  ★ 1  Lua", rendered)
+			assert.matches("repository%-6  ★ 6  Lua", rendered)
+			assert.is_nil(rendered:find("repository-7", 1, true))
+
+			vim.api.nvim_buf_delete(buf_id, { force = true })
+		end)
+
+		it("clears the repositories panel before rendering AI usage", function()
+			local original_fetch_ai_usage = GithubService.fetch_ai_usage
+			GithubService.fetch_ai_usage = function(_, _, on_loading, on_success, _)
+				on_loading()
+				on_success({
+					additional_budget_credits = 5000,
+					additional_credits = 300,
+					additional_amount = 3,
+					included_credits = 1500,
+					included_credits_used = 1500,
+					over_pool_credits = 300,
+				})
+			end
+			local buf_id = vim.api.nvim_create_buf(false, true)
+			vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, vim.fn["repeat"]({ "" }, 7))
+
+			DashboardView.load_repositories(buf_id, {
+				{ name = "repository-1", stars = "1", language = "Lua" },
+			}, 0, 7)
+			DashboardView.load_ai_usage(buf_id, default_chars, 0, 7, function()
+				return true
+			end, function() end, function() end)
+
+			local rendered = table.concat(vim.api.nvim_buf_get_lines(buf_id, 0, -1, false), "\n")
+			assert.matches("AI Usage", rendered)
+			assert.is_nil(rendered:find("repository-1", 1, true))
+
+			GithubService.fetch_ai_usage = original_fetch_ai_usage
+			vim.api.nvim_buf_delete(buf_id, { force = true })
+		end)
+
 		it("focuses the contributions graph with C or Enter on the Contributions menu button", function()
 			local Contribution = require("nvim-gh-dashboard.contribution")
 			local buf_id = vim.api.nvim_create_buf(false, true)
@@ -367,7 +422,7 @@ describe("dashboard-view", function()
 			local menu_line
 			local graph_line
 			for i, line in ipairs(lines) do
-				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s+%[V%] Achievements%s*$") then
+				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s+%[R%] Repositories%s+%[V%] Achievements%s*$") then
 					menu_line = i
 				elseif not graph_line and line:match("^%s*#%s*$") then
 					graph_line = i
@@ -390,7 +445,10 @@ describe("dashboard-view", function()
 			vim.api.nvim_exec_autocmds("CursorMoved", { buffer = buf_id })
 			lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
 			assert.matches("5 contributions on January 21%.", table.concat(lines, "\n"))
-			assert.matches("^%s*%[C%] Contributions%s+%[A%] AI%s+%[V%] Achievements%s*$", lines[menu_line])
+			assert.matches(
+				"^%s*%[C%] Contributions%s+%[A%] AI%s+%[R%] Repositories%s+%[V%] Achievements%s*$",
+				lines[menu_line]
+			)
 
 			vim.api.nvim_buf_delete(buf_id, { force = true })
 		end)
@@ -435,7 +493,7 @@ describe("dashboard-view", function()
 
 		it("replaces all header content lines without clearing menu buttons", function()
 			local buf_id = vim.api.nvim_create_buf(false, true)
-			local menu = "[C] Contributions  [A] AI  [V] Achievements"
+			local menu = "[C] Contributions  [A] AI  [R] Repositories  [V] Achievements"
 			vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, {
 				menu,
 				"┌──────────────────────────────────────────────────────────────┐",
@@ -493,7 +551,7 @@ describe("dashboard-view", function()
 			local initial_menu_line
 			local initial_user_line
 			for i, line in ipairs(initial_lines) do
-				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s+%[V%] Achievements%s*$") then
+				if line:match("^%s*%[C%] Contributions%s+%[A%] AI%s+%[R%] Repositories%s+%[V%] Achievements%s*$") then
 					initial_menu_line = i
 				elseif line:match("^%s*User: octocat%s*$") then
 					initial_user_line = i

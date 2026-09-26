@@ -4,6 +4,7 @@ local ContributionMetadata = require("nvim-gh-dashboard.contribution-metadata")
 local ActivityMetadata = require("nvim-gh-dashboard.activity-metadata")
 local AchievementMetadata = require("nvim-gh-dashboard.achievement-metadata")
 local ProfileDetails = require("nvim-gh-dashboard.profile-details")
+local RepositoryMetadata = require("nvim-gh-dashboard.repository-metadata")
 
 local HTTP_OK_STATUS = 200
 local DECEMBER = 12
@@ -14,6 +15,13 @@ local EXECUTABLE_RESULT = 1
 local ZERO_CREDITS = 0
 local FIRST_LUA_INDEX = 1
 local GITHUB_BASE_URL = "https://github.com"
+local POPULAR_REPOSITORIES_HEADING = "Popular repositories"
+local OPEN_ORDERED_LIST_TAG = "<ol"
+local CLOSE_ORDERED_LIST_TAG = "</ol>"
+local REPOSITORY_LIST_ITEM_PATTERN = "<li[^>]*>(.-)</li>"
+local LEGACY_REPOSITORY_LIST_ITEM_PATTERN = '<li[^>]-itemprop%s*=%s*["\']owns["][^>]*>(.-)</li>'
+local REPOSITORY_NAME_PATTERN = '<span%s+[^>]-class="repo"[^>]*>(.-)</span>'
+local DEFAULT_STAR_COUNT = "0"
 local HOVERCARD_REQUEST_HEADERS = {
 	Accept = "text/html",
 	["X-Requested-With"] = "XMLHttpRequest",
@@ -24,6 +32,7 @@ local HOVERCARD_REQUEST_HEADERS = {
 ---@field contributions ContributionMetadata[]
 ---@field activity ActivityMetadata|nil
 ---@field profile_details ProfileDetails|nil
+---@field repositories RepositoryMetadata[]
 
 -- Cache the contribution tab and full profile page by their shared dashboard key.
 local cached_gh_main_page = {
@@ -126,6 +135,55 @@ local function parse_profile_details(user_page)
 end
 
 ---@param user_page string HTML of the GitHub user page
+---@return RepositoryMetadata[]
+local function parse_repositories(user_page)
+	local repositories = {}
+	local popular_repositories_start = user_page:find(POPULAR_REPOSITORIES_HEADING, FIRST_LUA_INDEX, true)
+	local repository_list
+	local list_item_pattern = LEGACY_REPOSITORY_LIST_ITEM_PATTERN
+
+	if popular_repositories_start then
+		local list_start = user_page:find(OPEN_ORDERED_LIST_TAG, popular_repositories_start, true)
+		local list_end = list_start and user_page:find(CLOSE_ORDERED_LIST_TAG, list_start, true)
+		if list_start and list_end then
+			repository_list = user_page:sub(list_start, list_end - FIRST_LUA_INDEX)
+			list_item_pattern = REPOSITORY_LIST_ITEM_PATTERN
+		end
+	end
+
+	for repository_html in (repository_list or user_page):gmatch(list_item_pattern) do
+		local name, stars, language
+
+		local name_html = repository_html:match(REPOSITORY_NAME_PATTERN)
+		if name_html then
+			name = plain_text(name_html)
+		end
+
+		for attributes, content in repository_html:gmatch("<a%s+([^>]-)>(.-)</a>") do
+			local itemprop = attributes:match("itemprop%s*=%s*[\"']([^\"']+)[\"']")
+			local href = attributes:match("href%s*=%s*[\"']([^\"']+)[\"']")
+			if not name and itemprop and itemprop:find("codeRepository", FIRST_LUA_INDEX, true) then
+				name = plain_text(content)
+			elseif href and href:match("/stargazers$") then
+				stars = plain_text(content)
+			end
+		end
+
+		local language_html =
+			repository_html:match("<[^>]-itemprop%s*=%s*[\"']programmingLanguage[\"'][^>]*>(.-)</[^>]+>")
+		if language_html then
+			language = plain_text(language_html)
+		end
+
+		if name then
+			table.insert(repositories, RepositoryMetadata.new(name, stars or DEFAULT_STAR_COUNT, language))
+		end
+	end
+
+	return repositories
+end
+
+---@param user_page string HTML of the GitHub user page
 ---@return AchievementMetadata[]
 local function parse_achievements(user_page)
 	local achievements = {}
@@ -171,12 +229,14 @@ local function parse_dashboard_data(contributions_page, profile_page)
 		contributions = parse_contributions(contributions_page),
 		activity = parse_activity(contributions_page),
 		profile_details = parse_profile_details(profile_page),
+		repositories = parse_repositories(profile_page),
 	}
 end
 
 M.parse_contributions = parse_contributions
 M.parse_activity = parse_activity
 M.parse_profile_details = parse_profile_details
+M.parse_repositories = parse_repositories
 M.parse_achievements = parse_achievements
 M.parse_achievement_details = parse_achievement_details
 M.parse_dashboard_data = parse_dashboard_data
