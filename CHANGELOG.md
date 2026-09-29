@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.10.0...v1.11.0) (2026-09-29)
+
+
+### Features
+
+* Improve repos render ([#38](https://github.com/tiberium/nvim-gh-dashboard/issues/38)) ([e28bdb9](https://github.com/tiberium/nvim-gh-dashboard/commit/e28bdb9eb2d2d8143256015d8914cf087b659cd9))
+
 ## [1.10.0](https://github.com/tiberium/nvim-gh-dashboard/compare/v1.9.0...v1.10.0) (2026-09-26)
 
 
