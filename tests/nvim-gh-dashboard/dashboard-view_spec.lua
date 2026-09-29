@@ -352,7 +352,7 @@ describe("dashboard-view", function()
 			vim.api.nvim_buf_delete(buf_id, { force = true })
 		end)
 
-		it("shows at most six popular repositories in the available panel lines", function()
+		it("shows a blank line below the title and at most five popular repositories", function()
 			local buf_id = vim.api.nvim_create_buf(false, true)
 			vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, vim.fn["repeat"]({ "" }, 7))
 			local repositories = {}
@@ -369,9 +369,37 @@ describe("dashboard-view", function()
 			local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
 			local rendered = table.concat(lines, "\n")
 			assert.matches("Popular repositories", lines[2])
+			assert.equals("", lines[3])
 			assert.matches("repository%-1  ★ 1  Lua", rendered)
-			assert.matches("repository%-6  ★ 6  Lua", rendered)
-			assert.is_nil(rendered:find("repository-7", 1, true))
+			assert.matches("repository%-5  ★ 5  Lua", rendered)
+			assert.is_nil(rendered:find("repository-6", 1, true))
+
+			vim.api.nvim_buf_delete(buf_id, { force = true })
+		end)
+
+		it("centers repository columns while right-aligning repository names", function()
+			local buf_id = vim.api.nvim_create_buf(false, true)
+			vim.api.nvim_buf_set_lines(buf_id, 0, -1, false, vim.fn["repeat"]({ "" }, 4))
+
+			DashboardView.load_repositories(buf_id, {
+				{ name = "short", stars = "1", language = "Lua" },
+				{ name = "much-longer", stars = "100", language = "TypeScript" },
+			}, 0, 4)
+
+			local lines = vim.api.nvim_buf_get_lines(buf_id, 0, -1, false)
+			local short_name_col = lines[4]:find("short", 1, true)
+			local long_name_col = lines[5]:find("much-longer", 1, true)
+			local short_stars_col = lines[4]:find("★ 1", 1, true)
+			local long_stars_col = lines[5]:find("★ 100", 1, true)
+			local short_language_col = lines[4]:find("Lua", 1, true)
+			local long_language_col = lines[5]:find("TypeScript", 1, true)
+			local block_width = vim.fn.strdisplaywidth("much-longer  ★ 100  TypeScript")
+			local expected_padding = math.floor((vim.api.nvim_win_get_width(0) - block_width) / 2)
+
+			assert.equals(long_name_col + #"much-longer", short_name_col + #"short")
+			assert.equals(short_stars_col, long_stars_col)
+			assert.equals(short_language_col, long_language_col)
+			assert.equals(expected_padding, long_name_col - 1)
 
 			vim.api.nvim_buf_delete(buf_id, { force = true })
 		end)

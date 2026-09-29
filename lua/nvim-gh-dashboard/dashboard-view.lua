@@ -39,10 +39,14 @@ local HEADER_RIGHT_BORDER = "│"
 local HEADER_DEFAULT_CONTENT = { "", "GitHub Dashboard", "" }
 local vertical_offset = 5
 local AI_USAGE_HEIGHT = 4
-local MAX_REPOSITORY_LINES = 6
+local MAX_REPOSITORY_LINES = 5
 local REPOSITORIES_TITLE = "Popular repositories"
 local REPOSITORIES_TITLE_HEIGHT = 1
-local MAX_PANEL_HEIGHT = MAX_REPOSITORY_LINES + REPOSITORIES_TITLE_HEIGHT
+local REPOSITORIES_TITLE_SPACING_HEIGHT = 1
+local REPOSITORIES_HEADER_HEIGHT = REPOSITORIES_TITLE_HEIGHT + REPOSITORIES_TITLE_SPACING_HEIGHT
+local MAX_PANEL_HEIGHT = MAX_REPOSITORY_LINES + REPOSITORIES_HEADER_HEIGHT
+local REPOSITORY_COLUMN_SEPARATOR = "  "
+local REPOSITORY_STAR_PREFIX = "★ "
 local top_empty_lines = 2
 local ACHIEVEMENTS_TITLE = "Achievements"
 local ACHIEVEMENTS_LOADING_MESSAGE = "Loading achievements..."
@@ -811,11 +815,52 @@ function M.load_ai_usage(buf_id, chars, panel_line_idx, panel_height, is_active,
 	end)
 end
 
----@param repository RepositoryMetadata
+---@param value string
+---@param width number
 ---@return string
-local function repository_line(repository)
-	local language = repository.language or "No language"
-	return string.format("%s  ★ %s  %s", repository.name, repository.stars, language)
+local function right_align(value, width)
+	return string.rep(" ", width - vim.fn.strdisplaywidth(value)) .. value
+end
+
+---@param value string
+---@param width number
+---@return string
+local function left_align(value, width)
+	return value .. string.rep(" ", width - vim.fn.strdisplaywidth(value))
+end
+
+---@param repositories RepositoryMetadata[]
+---@return string[]
+local function repository_lines(repositories)
+	local rows = {}
+	local name_width = BUFFER_START_LINE
+	local stars_width = BUFFER_START_LINE
+
+	for _, repository in ipairs(repositories) do
+		local stars = REPOSITORY_STAR_PREFIX .. repository.stars
+		local row = {
+			name = repository.name,
+			stars = stars,
+			language = repository.language or "No language",
+		}
+		name_width = math.max(name_width, vim.fn.strdisplaywidth(row.name))
+		stars_width = math.max(stars_width, vim.fn.strdisplaywidth(row.stars))
+		table.insert(rows, row)
+	end
+
+	local lines = {}
+	for _, row in ipairs(rows) do
+		table.insert(
+			lines,
+			right_align(row.name, name_width)
+				.. REPOSITORY_COLUMN_SEPARATOR
+				.. left_align(row.stars, stars_width)
+				.. REPOSITORY_COLUMN_SEPARATOR
+				.. row.language
+		)
+	end
+
+	return lines
 end
 
 ---Renders popular repositories from the profile page in the available rows
@@ -829,19 +874,31 @@ function M.load_repositories(buf_id, repositories, panel_line_idx, panel_height)
 		return
 	end
 
-	local lines = { REPOSITORIES_TITLE }
-	for index = FIRST_LUA_INDEX, math.min(#repositories, panel_height - REPOSITORIES_TITLE_HEIGHT) do
-		table.insert(lines, repository_line(repositories[index]))
+	local repository_rows = {}
+	for index = FIRST_LUA_INDEX, math.min(#repositories, panel_height - REPOSITORIES_HEADER_HEIGHT) do
+		table.insert(repository_rows, repositories[index])
 	end
-	if #lines == REPOSITORIES_TITLE_HEIGHT then
+	local lines = { REPOSITORIES_TITLE, "" }
+	local repository_block_width
+	if #repository_rows == BUFFER_START_LINE then
 		table.insert(lines, "No popular repositories.")
+	else
+		local formatted_repository_lines = repository_lines(repository_rows)
+		repository_block_width = max_width(formatted_repository_lines)
+		vim.list_extend(lines, formatted_repository_lines)
 	end
 
 	local padded_lines = {}
 	local highlights = {}
 	local repository_highlight_groups = shuffled_repository_highlight_groups()
-	for _, line in ipairs(lines) do
-		local padding = pad_for_line(vim.api.nvim_win_get_width(CURRENT_WINDOW_ID), line)
+	local win_width = vim.api.nvim_win_get_width(CURRENT_WINDOW_ID)
+	for line_index, line in ipairs(lines) do
+		local padding
+		if line_index <= REPOSITORIES_HEADER_HEIGHT or #repository_rows == BUFFER_START_LINE then
+			padding = pad_for_line(win_width, line)
+		else
+			padding = pad_for_width(win_width, repository_block_width)
+		end
 		table.insert(padded_lines, string.rep(" ", padding) .. line)
 	end
 	table.insert(highlights, {
@@ -850,12 +907,12 @@ function M.load_repositories(buf_id, repositories, panel_line_idx, panel_height)
 		col_end = HIGHLIGHT_TO_END_OF_LINE,
 		hl_group = "GHDashboardRepositoriesTitle",
 	})
-	for line_index = FIRST_LUA_INDEX + REPOSITORIES_TITLE_HEIGHT, #lines do
+	for line_index = FIRST_LUA_INDEX + REPOSITORIES_HEADER_HEIGHT, #lines do
 		table.insert(highlights, {
 			line = line_index - FIRST_LUA_INDEX,
 			col_start = BUFFER_START_LINE,
 			col_end = HIGHLIGHT_TO_END_OF_LINE,
-			hl_group = repository_highlight_groups[line_index - REPOSITORIES_TITLE_HEIGHT],
+			hl_group = repository_highlight_groups[line_index - REPOSITORIES_HEADER_HEIGHT],
 		})
 	end
 	for _ = #padded_lines + FIRST_LUA_INDEX, panel_height do
