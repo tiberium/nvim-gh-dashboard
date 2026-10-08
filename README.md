@@ -142,9 +142,6 @@ Runtime modules are grouped by responsibility under `lua/nvim-gh-dashboard/`:
 - `ui/` contains dashboard rendering, cursor interaction, animations, and highlights.
 - `utils/` contains shared Neovim buffer helpers.
 
-The previous top-level module paths remain lightweight compatibility shims; new
-code should import from the grouped paths.
-
 ## License
 
 [MIT](LICENSE)
