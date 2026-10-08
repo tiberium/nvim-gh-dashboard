@@ -1,0 +1,100 @@
+local M = {}
+
+local GLOBAL_HIGHLIGHT_NAMESPACE = 0
+
+---Default highlight group definitions.
+---
+---Each entry is a table compatible with `vim.api.nvim_set_hl`'s `{val}` argument.
+---Colors are not hard-coded; instead every group is `link`-ed to a highlight
+---group that is virtually guaranteed to already be defined by whatever
+---colorscheme is loaded (built-in groups such as `String`, `Title`,
+---`DiagnosticWarn`, ...). This means the dashboard automatically adapts its
+---colors to the user's current colorscheme/palette.
+---@type table<string, table>
+M.defaults = {
+	-- Header
+	GHDashboardHeaderBorder = { link = "FloatBorder" },
+	GHDashboardHeaderBorderActive = { link = "GHDashboardHigh" },
+	GHDashboardHeaderTitle = { link = "Title" },
+	GHDashboardHeaderLabel = { link = "Comment" },
+	GHDashboardHeaderValue = { link = "Identifier" },
+	GHDashboardAchievementsTitle = { link = "DiagnosticInfo", bold = true },
+	GHDashboardAchievementsBorder = { link = "NonText" },
+	GHDashboardAchievementsEmpty = { link = "Comment" },
+	GHDashboardAchievementsError = { link = "DiagnosticError" },
+	GHDashboardAchievementSymbol1 = { link = "String", bold = true },
+	GHDashboardAchievementSymbol2 = { link = "Function", bold = true },
+	GHDashboardAchievementSymbol3 = { link = "DiagnosticHint", bold = true },
+	GHDashboardAchievementSymbol4 = { link = "DiagnosticInfo", bold = true },
+	GHDashboardAchievementSymbol5 = { link = "DiagnosticOk", bold = true },
+	GHDashboardAchievementSymbol6 = { link = "DiagnosticWarn", bold = true },
+	GHDashboardAchievementSymbol7 = { link = "Number", bold = true },
+	GHDashboardAchievementSymbol8 = { link = "Constant", bold = true },
+	GHDashboardAchievementSymbol9 = { link = "Special", bold = true },
+	GHDashboardAchievementSymbol10 = { link = "Type", bold = true },
+
+	-- Dashboard menu
+	GHDashboardMenuShortcut = { link = "Function", bold = true },
+	GHDashboardMenuLabel = { link = "String" },
+	GHDashboardSeparator = { link = "NonText" },
+
+	-- Contributions graph: intensity scale, from "no contributions" to the
+	-- highest tier (100+ contributions in a single day), mirroring the
+	-- multiple shades of green used on github.com.
+	GHDashboardEmpty = { link = "Comment" },
+	GHDashboardLevel1 = { link = "DiagnosticHint" },
+	GHDashboardLevel2 = { link = "DiagnosticInfo" },
+	GHDashboardLevel3 = { link = "DiagnosticOk" },
+	GHDashboardLevel4 = { link = "String" },
+	GHDashboardHigh = { link = "DiagnosticWarn", bold = true },
+
+	-- Bar graphs
+	GHDashboardBarGraphFill = { link = "Function" },
+	GHDashboardActivityLabel = { link = "Identifier" },
+	GHDashboardActivityBorder = { link = "NonText" },
+	GHDashboardActivityBarEmpty = { link = "Comment" },
+	GHDashboardActivityPercent = { link = "Number" },
+
+	-- AI usage graph
+	GHDashboardAiUsageTitle = { link = "Title" },
+	GHDashboardAiUsageLabel = { link = "Identifier" },
+	GHDashboardAiUsageBorder = { link = "NonText" },
+	GHDashboardAiUsageValue = { link = "Number" },
+
+	-- Popular repositories
+	GHDashboardRepositoriesTitle = { link = "Title" },
+	GHDashboardRepository1 = { link = "String", bold = true },
+	GHDashboardRepository2 = { link = "Function", bold = true },
+	GHDashboardRepository3 = { link = "DiagnosticHint", bold = true },
+	GHDashboardRepository4 = { link = "DiagnosticInfo", bold = true },
+	GHDashboardRepository5 = { link = "DiagnosticOk", bold = true },
+	GHDashboardRepository6 = { link = "DiagnosticWarn", bold = true },
+}
+
+---Sets up (defines) all the highlight groups used by the dashboard, applying
+---any user-provided overrides on top of the defaults.
+---@param colors table|nil user overrides, keyed by highlight group name. Each
+---value is merged into (and overrides) the corresponding default definition,
+---using the same shape accepted by `vim.api.nvim_set_hl` (e.g. `{ fg = "#ff0000" }`,
+---`{ link = "MyGroup" }`, `{ bold = true }`, ...).
+function M.setup(colors)
+	colors = colors or {}
+
+	for name, default_definition in pairs(M.defaults) do
+		local override = colors[name]
+		local definition = default_definition
+
+		if override then
+			definition = vim.tbl_deep_extend("force", {}, default_definition, override)
+			-- Overriding with explicit colors should not keep a stale `link`
+			-- around, otherwise the link would take precedence over fg/bg.
+			if override.link == nil and (override.fg or override.bg or override.ctermfg or override.ctermbg) then
+				definition.link = nil
+			end
+		end
+
+		vim.api.nvim_set_hl(GLOBAL_HIGHLIGHT_NAMESPACE, name, definition)
+	end
+end
+
+return M

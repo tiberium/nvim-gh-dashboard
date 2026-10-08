@@ -1,7 +1,7 @@
-local GithubService = require("nvim-gh-dashboard.github-service")
-local DashboardView = require("nvim-gh-dashboard.dashboard-view")
-local ContributionMetadata = require("nvim-gh-dashboard.contribution-metadata")
-local CursorTracking = require("nvim-gh-dashboard.cursor-tracking")
+local GithubService = require("nvim-gh-dashboard.services.github-service")
+local DashboardView = require("nvim-gh-dashboard.ui.dashboard-view")
+local ContributionMetadata = require("nvim-gh-dashboard.models.contribution-metadata")
+local CursorTracking = require("nvim-gh-dashboard.ui.cursor-tracking")
 
 describe("dashboard-view", function()
 	local default_chars = { filled = "#", high = "@", empty = "." }
@@ -116,7 +116,7 @@ describe("dashboard-view", function()
 
 	describe("render_dashboard", function()
 		it("renders achievement symbols and their cursor description asynchronously", function()
-			local Contribution = require("nvim-gh-dashboard.contribution")
+			local Contribution = require("nvim-gh-dashboard.models.contribution")
 			local original_fetch_achievements = GithubService.fetch_achievements
 			local original_fetch_achievement_details = GithubService.fetch_achievement_details
 			local requested_username
@@ -193,7 +193,7 @@ describe("dashboard-view", function()
 		end)
 
 		it("renders followers and following beneath the profile identity", function()
-			local Contribution = require("nvim-gh-dashboard.contribution")
+			local Contribution = require("nvim-gh-dashboard.models.contribution")
 			local metadata = ContributionMetadata.new("0", "0", "5 contributions on January 21.")
 			local buf_id = vim.api.nvim_create_buf(false, true)
 
@@ -229,7 +229,7 @@ describe("dashboard-view", function()
 		end)
 
 		it("shows an empty achievements message in the symbols line", function()
-			local Contribution = require("nvim-gh-dashboard.contribution")
+			local Contribution = require("nvim-gh-dashboard.models.contribution")
 			local original_fetch_achievements = GithubService.fetch_achievements
 			GithubService.fetch_achievements = function(_, on_success, _)
 				vim.schedule(function()
@@ -265,7 +265,7 @@ describe("dashboard-view", function()
 		end)
 
 		it("loads the authenticated AI usage panel after pressing Enter on the AI menu", function()
-			local Contribution = require("nvim-gh-dashboard.contribution")
+			local Contribution = require("nvim-gh-dashboard.models.contribution")
 			vim.api.nvim_win_set_height(0, 40)
 			local buf_id = vim.api.nvim_create_buf(false, true)
 			local original_fetch_ai_usage = GithubService.fetch_ai_usage
@@ -436,7 +436,7 @@ describe("dashboard-view", function()
 		end)
 
 		it("focuses the contributions graph with C or Enter on the Contributions menu button", function()
-			local Contribution = require("nvim-gh-dashboard.contribution")
+			local Contribution = require("nvim-gh-dashboard.models.contribution")
 			local buf_id = vim.api.nvim_create_buf(false, true)
 			local contributions = {}
 			for day = 0, 6 do

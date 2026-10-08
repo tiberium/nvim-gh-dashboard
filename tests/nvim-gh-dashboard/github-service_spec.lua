@@ -4,9 +4,9 @@ describe("github-service", function()
 	local GithubService
 
 	before_each(function()
-		package.loaded["github-service"] = nil
+		package.loaded["nvim-gh-dashboard.services.github-service"] = nil
 		package.loaded["plenary.curl"] = nil
-		GithubService = require("nvim-gh-dashboard.github-service")
+		GithubService = require("nvim-gh-dashboard.services.github-service")
 	end)
 
 	describe("parse_contributions", function()

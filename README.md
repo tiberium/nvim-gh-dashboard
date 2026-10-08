@@ -132,6 +132,19 @@ PLENARY_PATH=/path/to/plenary.nvim \
 
 Contributions, issues, and feature requests are welcome.
 
+### Module layout
+
+Runtime modules are grouped by responsibility under `lua/nvim-gh-dashboard/`:
+
+- `models/` contains GitHub-derived domain values and contribution display data.
+- `graphs/` contains the aligned text graph renderers.
+- `services/` contains GitHub transport, caching, and parsing orchestration.
+- `ui/` contains dashboard rendering, cursor interaction, animations, and highlights.
+- `utils/` contains shared Neovim buffer helpers.
+
+The previous top-level module paths remain lightweight compatibility shims; new
+code should import from the grouped paths.
+
 ## License
 
 [MIT](LICENSE)
