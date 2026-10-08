@@ -137,7 +137,7 @@ Contributions, issues, and feature requests are welcome.
 Runtime modules are grouped by responsibility under `lua/nvim-gh-dashboard/`:
 
 - `models/` contains GitHub-derived domain values and contribution display data.
-- `graphs/` contains the aligned text graph renderers.
+- `renderers/` contains the aligned text graph renderers.
 - `clients/` contains GitHub HTTP and CLI transport plus response caching.
 - `extractors/` transforms GitHub HTML and JSON responses into domain models.
 - `services/` orchestrates clients and extractors for the dashboard UI.

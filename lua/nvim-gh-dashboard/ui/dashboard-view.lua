@@ -1,8 +1,8 @@
 local M = {}
 
-local ContributionsGraph = require("nvim-gh-dashboard.graphs.contributions-graph")
-local ActivityGraph = require("nvim-gh-dashboard.graphs.activity-graph")
-local AiUsageGraph = require("nvim-gh-dashboard.graphs.ai-usage-graph")
+local ContributionsGraph = require("nvim-gh-dashboard.renderers.contributions-graph")
+local ActivityGraph = require("nvim-gh-dashboard.renderers.activity-graph")
+local AiUsageGraph = require("nvim-gh-dashboard.renderers.ai-usage-graph")
 local Contribution = require("nvim-gh-dashboard.models.contribution")
 local GithubService = require("nvim-gh-dashboard.services.github-service")
 local buffer_helpers = require("nvim-gh-dashboard.utils.buffer-helpers")

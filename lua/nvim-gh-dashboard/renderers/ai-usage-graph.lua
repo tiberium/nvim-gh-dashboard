@@ -1,7 +1,7 @@
 local AiUsageGraph = {}
 AiUsageGraph.__index = AiUsageGraph
 
-local BarGraph = require("nvim-gh-dashboard.graphs.bar-graph")
+local BarGraph = require("nvim-gh-dashboard.renderers.bar-graph")
 
 local AI_USAGE_GRAPH_HEIGHT = 4
 local AI_USAGE_BAR_WIDTH = 20

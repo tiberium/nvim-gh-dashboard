@@ -1,7 +1,7 @@
 local ActivityGraph = {}
 ActivityGraph.__index = ActivityGraph
 
-local BarGraph = require("nvim-gh-dashboard.graphs.bar-graph")
+local BarGraph = require("nvim-gh-dashboard.renderers.bar-graph")
 
 local ACTIVITY_TYPES = { "code_review", "commits", "pull_requests", "issues" }
 local ACTIVITY_PERCENTAGE_TOTAL = 100

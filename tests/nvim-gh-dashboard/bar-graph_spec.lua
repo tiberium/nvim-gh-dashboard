@@ -1,9 +1,9 @@
-local ActivityGraph = require("nvim-gh-dashboard.graphs.activity-graph")
-local AiUsageGraph = require("nvim-gh-dashboard.graphs.ai-usage-graph")
+local ActivityGraph = require("nvim-gh-dashboard.renderers.activity-graph")
+local AiUsageGraph = require("nvim-gh-dashboard.renderers.ai-usage-graph")
 local Colors = require("nvim-gh-dashboard.ui.colors")
 local Contribution = require("nvim-gh-dashboard.models.contribution")
 local ContributionMetadata = require("nvim-gh-dashboard.models.contribution-metadata")
-local BarGraph = require("nvim-gh-dashboard.graphs.bar-graph")
+local BarGraph = require("nvim-gh-dashboard.renderers.bar-graph")
 
 describe("bar-graph", function()
 	it("renders and highlights a bar from its state and colors", function()
