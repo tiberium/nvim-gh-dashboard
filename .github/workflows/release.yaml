@@ -14,6 +14,7 @@ jobs:
     name: Create release pull request
     runs-on: ubuntu-latest
     steps:
+      # To manually set a release version, add "Release-As: x.y.z" to a commit body.
       - uses: googleapis/release-please-action@v4
         with:
           release-type: simple
