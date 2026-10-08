@@ -94,12 +94,13 @@ normal-mode mappings:
 
     C               Focus the contribution graph.
     A               Load the personal Copilot usage panel on demand.
+    R               Show popular repositories.
     V               Focus achievement badges.
     <Enter>         Activate the menu item under the cursor.
 
 Move the cursor through the contribution graph to display the selected day's
-details. Achievement badges load their unlock date and description when
-selected. The dashboard buffer is read-only.
+details. Move the cursor over an achievement badge to load its unlock date
+and description. The dashboard buffer is read-only.
 
 ==============================================================================
 7. Colors                                            *nvim-gh-dashboard-colors*
@@ -116,14 +117,14 @@ default link, and its purpose.
 
     Highlight group                Default link          Used for ~
     GHDashboardHeaderBorder         FloatBorder           Header box border
+    GHDashboardHeaderBorderActive   GHDashboardHigh       Active header box border
     GHDashboardHeaderTitle          Title                 Header title
     GHDashboardHeaderLabel          Comment               `User:`/`Year:` labels
     GHDashboardHeaderValue          Identifier            Username/year values
     GHDashboardAchievementsTitle    DiagnosticInfo (bold) Achievements heading
+    GHDashboardAchievementsBorder   NonText               Achievements border
     GHDashboardAchievementsEmpty    Comment               Empty achievements state
     GHDashboardAchievementsError    DiagnosticError       Achievements error state
-    GHDashboardAchievementDescription Identifier          Achievement name
-    GHDashboardAchievementDetails   Comment               Unlock date/description
     GHDashboardAchievementSymbol1-10 varied (bold)       Achievement badges
     GHDashboardEmpty                Comment               Days with 0 contributions
     GHDashboardLevel1               DiagnosticHint        Days with 1-3 contributions
@@ -143,6 +144,8 @@ default link, and its purpose.
     GHDashboardAiUsageLabel         Identifier            AI Usage labels
     GHDashboardAiUsageBorder        NonText               AI Usage bar brackets
     GHDashboardAiUsageValue         Number                AI Usage values
+    GHDashboardRepositoriesTitle    Title                 Popular repositories heading
+    GHDashboardRepository1-6        varied (bold)        Popular repository rows
 
 Override any of these groups through `opts.colors`, using the same shape
 accepted by `nvim_set_hl()`: >lua
