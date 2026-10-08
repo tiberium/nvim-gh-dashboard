@@ -1,13 +1,13 @@
 local M = {}
 
-local ContributionsGraph = require("nvim-gh-dashboard.contributions-graph")
-local ActivityGraph = require("nvim-gh-dashboard.activity-graph")
-local AiUsageGraph = require("nvim-gh-dashboard.ai-usage-graph")
-local Contribution = require("nvim-gh-dashboard.contribution")
-local GithubService = require("nvim-gh-dashboard.github-service")
-local buffer_helpers = require("nvim-gh-dashboard.buffer-helpers")
-local Spinner = require("nvim-gh-dashboard.spinner")
-local CursorTracking = require("nvim-gh-dashboard.cursor-tracking")
+local ContributionsGraph = require("nvim-gh-dashboard.renderers.contributions-graph")
+local ActivityGraph = require("nvim-gh-dashboard.renderers.activity-graph")
+local AiUsageGraph = require("nvim-gh-dashboard.renderers.ai-usage-graph")
+local Contribution = require("nvim-gh-dashboard.models.contribution")
+local GithubService = require("nvim-gh-dashboard.services.github-service")
+local buffer_helpers = require("nvim-gh-dashboard.utils.buffer-helpers")
+local Spinner = require("nvim-gh-dashboard.ui.spinner")
+local CursorTracking = require("nvim-gh-dashboard.ui.cursor-tracking")
 
 -- Re-exported for backward compatibility.
 M.spinner_frames = Spinner.spinner_frames

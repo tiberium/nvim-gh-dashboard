@@ -1,19 +1,30 @@
 local fixtures = require("tests.nvim-gh-dashboard.fixtures")
 
-describe("github-service", function()
+describe("GitHub integration", function()
 	local GithubService
+	local GithubProfile
+	local GithubAchievements
+	local GithubAiUsage
+	local AchievementDetails
+	local AiUsageData
 
 	before_each(function()
-		package.loaded["github-service"] = nil
+		package.loaded["nvim-gh-dashboard.services.github-service"] = nil
+		package.loaded["nvim-gh-dashboard.clients.github-client"] = nil
 		package.loaded["plenary.curl"] = nil
-		GithubService = require("nvim-gh-dashboard.github-service")
+		GithubService = require("nvim-gh-dashboard.services.github-service")
+		GithubProfile = require("nvim-gh-dashboard.extractors.github-profile")
+		GithubAchievements = require("nvim-gh-dashboard.extractors.github-achievements")
+		GithubAiUsage = require("nvim-gh-dashboard.extractors.github-ai-usage")
+		AchievementDetails = require("nvim-gh-dashboard.models.achievement-details")
+		AiUsageData = require("nvim-gh-dashboard.models.ai-usage-data")
 	end)
 
-	describe("parse_contributions", function()
+	describe("github-profile extractor", function()
 		it("extracts every contribution tool-tip", function()
 			local html = fixtures.page(fixtures.sample_entries)
 
-			local contributions = GithubService.parse_contributions(html)
+			local contributions = GithubProfile.extract_contributions(html)
 
 			assert.equals(3, #contributions)
 			assert.equals("0", contributions[1].day)
@@ -26,17 +37,17 @@ describe("github-service", function()
 		it("returns an empty list when there are no tool-tips", function()
 			local html = fixtures.page({})
 
-			local contributions = GithubService.parse_contributions(html)
+			local contributions = GithubProfile.extract_contributions(html)
 
 			assert.same({}, contributions)
 		end)
 	end)
 
-	describe("parse_activity", function()
+	describe("github-profile extractor activity", function()
 		it("extracts the activity percentages", function()
 			local html = fixtures.page(fixtures.sample_entries, { with_activity = true })
 
-			local activity = GithubService.parse_activity(html)
+			local activity = GithubProfile.extract_activity(html)
 
 			assert.is_not_nil(activity)
 			assert.equals(70, activity.commits)
@@ -45,11 +56,11 @@ describe("github-service", function()
 			assert.equals(5, activity.issues)
 		end)
 
-		describe("parse_profile_details", function()
+		describe("profile details", function()
 			it("extracts followers and following from profile links", function()
 				local html = fixtures.page({}, { followers = "1.2k", following = "42" })
 
-				local profile_details = GithubService.parse_profile_details(html)
+				local profile_details = GithubProfile.extract_profile_details(html)
 
 				assert.same({
 					followers = "1.2k",
@@ -58,26 +69,28 @@ describe("github-service", function()
 			end)
 
 			it("returns nil when either profile statistic is missing", function()
-				assert.is_nil(GithubService.parse_profile_details('<a href="/octocat?tab=followers">42 followers</a>'))
+				assert.is_nil(
+					GithubProfile.extract_profile_details('<a href="/octocat?tab=followers">42 followers</a>')
+				)
 			end)
 		end)
 
 		it("returns nil when the activity container is missing", function()
 			local html = fixtures.page(fixtures.sample_entries, { with_activity = false })
 
-			local activity = GithubService.parse_activity(html)
+			local activity = GithubProfile.extract_activity(html)
 
 			assert.is_nil(activity)
 		end)
 	end)
 
-	describe("parse_achievements", function()
+	describe("github extractors", function()
 		it("extracts unique achievement names from achievement badge images", function()
 			local html = fixtures.page({}, {
 				achievements = { "Pull Shark", "YOLO", "Pull Shark" },
 			})
 
-			local achievements = GithubService.parse_achievements(html)
+			local achievements = GithubAchievements.extract_achievements(html)
 
 			assert.same({
 				{
@@ -91,7 +104,7 @@ describe("github-service", function()
 			}, achievements)
 		end)
 
-		describe("parse_repositories", function()
+		describe("repositories", function()
 			it("extracts popular repository names, star counts, and languages", function()
 				local html = [[
 					<h2>Popular repositories</h2>
@@ -115,14 +128,14 @@ describe("github-service", function()
 				assert.same({
 					{ name = "nvim-gh-dashboard", stars = "42", language = "Lua" },
 					{ name = "dotfiles", stars = "0", language = "Shell" },
-				}, GithubService.parse_repositories(html))
+				}, GithubProfile.extract_repositories(html))
 			end)
 		end)
 
 		it("ignores images that are not achievement badges", function()
 			local html = '<img alt="Achievement: Not a badge"><img data-hovercard-type="achievement" alt="Avatar">'
 
-			assert.same({}, GithubService.parse_achievements(html))
+			assert.same({}, GithubAchievements.extract_achievements(html))
 		end)
 
 		it("extracts the achievement description and unlock date from a hovercard", function()
@@ -133,28 +146,12 @@ describe("github-service", function()
 				</div>
 			]]
 
+			local details = GithubAchievements.extract_details(html)
 			assert.same({
 				description = "You want it? You merge it.",
 				unlocked_at = "2024-03-18T12:20:54Z",
-			}, GithubService.parse_achievement_details(html))
-		end)
-	end)
-
-	describe("parse_dashboard_data", function()
-		it("combines contributions and activity from a single page", function()
-			local html = fixtures.page(fixtures.sample_entries, {
-				followers = "1.2k",
-				following = "42",
-				repositories = { { name = "nvim-gh-dashboard", stars = "42", language = "Lua" } },
-			})
-
-			local data = GithubService.parse_dashboard_data(html, html)
-
-			assert.equals(3, #data.contributions)
-			assert.is_not_nil(data.activity)
-			assert.equals(70, data.activity.commits)
-			assert.same({ followers = "1.2k", following = "42" }, data.profile_details)
-			assert.same({ { name = "nvim-gh-dashboard", stars = "42", language = "Lua" } }, data.repositories)
+			}, details)
+			assert.equals(AchievementDetails, getmetatable(details))
 		end)
 	end)
 
@@ -196,9 +193,9 @@ describe("github-service", function()
 		end)
 	end)
 
-	describe("parse_ai_usage", function()
+	describe("github-ai-usage extractor", function()
 		it("combines the Copilot quota with additional billing usage", function()
-			local usage = GithubService.parse_ai_usage({
+			local usage = GithubAiUsage.extract_usage({
 				quota_snapshots = {
 					premium_interactions = {
 						overage_permitted = true,
@@ -222,10 +219,11 @@ describe("github-service", function()
 				included_credits_used = 1500,
 				over_pool_credits = 300,
 			}, usage)
+			assert.equals(AiUsageData, getmetatable(usage))
 		end)
 
 		it("returns zero additional budget usage when additional usage is not permitted", function()
-			local usage = GithubService.parse_ai_usage({
+			local usage = GithubAiUsage.extract_usage({
 				quota_snapshots = {
 					premium_interactions = {
 						overage_permitted = false,

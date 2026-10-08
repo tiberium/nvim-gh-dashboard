@@ -1,7 +1,7 @@
 local M = {}
 
-local DashboardView = require("nvim-gh-dashboard.dashboard-view")
-local Colors = require("nvim-gh-dashboard.colors")
+local DashboardView = require("nvim-gh-dashboard.ui.dashboard-view")
+local Colors = require("nvim-gh-dashboard.ui.colors")
 
 local NO_FILE_ARGUMENTS = 0
 local MAXIMUM_ACHIEVEMENT_CHARACTERS = 10

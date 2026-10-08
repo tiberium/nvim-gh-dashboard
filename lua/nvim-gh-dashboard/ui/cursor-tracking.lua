@@ -1,6 +1,6 @@
 local M = {}
 
-local buffer_helpers = require("nvim-gh-dashboard.buffer-helpers")
+local buffer_helpers = require("nvim-gh-dashboard.utils.buffer-helpers")
 
 local CURSOR_ROW_INDEX = 1
 local CURSOR_COLUMN_INDEX = 2

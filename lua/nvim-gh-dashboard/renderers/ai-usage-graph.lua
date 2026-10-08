@@ -1,7 +1,7 @@
 local AiUsageGraph = {}
 AiUsageGraph.__index = AiUsageGraph
 
-local BarGraph = require("nvim-gh-dashboard.bar-graph")
+local BarGraph = require("nvim-gh-dashboard.renderers.bar-graph")
 
 local AI_USAGE_GRAPH_HEIGHT = 4
 local AI_USAGE_BAR_WIDTH = 20
@@ -16,14 +16,6 @@ local AI_USAGE_BAR_COLORS = {
 	filled = BarGraph.FILLED_HIGHLIGHT_GROUP,
 	value = "GHDashboardAiUsageValue",
 }
-
----@class AiUsageData
----@field additional_budget_credits number
----@field additional_credits number
----@field additional_amount number
----@field included_credits number
----@field included_credits_used number
----@field over_pool_credits number
 
 ---@param usage AiUsageData
 ---@param chars table Characters configuration
