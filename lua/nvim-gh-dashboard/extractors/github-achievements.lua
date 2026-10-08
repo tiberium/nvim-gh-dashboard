@@ -1,6 +1,7 @@
 local M = {}
 
 local AchievementMetadata = require("nvim-gh-dashboard.models.achievement-metadata")
+local AchievementDetails = require("nvim-gh-dashboard.models.achievement-details")
 
 local FIRST_LUA_INDEX = 1
 local GITHUB_BASE_URL = "https://github.com"
@@ -35,7 +36,7 @@ function M.extract_achievements(html)
 end
 
 ---@param html string HTML of a GitHub achievement hovercard
----@return { description: string|nil, unlocked_at: string|nil }
+---@return AchievementDetails
 function M.extract_details(html)
 	local description_html = html:match('<div[^>]-class="mt%-1"[^>]*>%s*(.-)%s*</div>')
 	local unlocked_section_start = html:find("achievement-history-unlocked-at", FIRST_LUA_INDEX, true)
@@ -44,10 +45,7 @@ function M.extract_details(html)
 		unlocked_at = html:sub(unlocked_section_start):match('<relative%-time%s+[^>]-datetime="([^"]+)"')
 	end
 
-	return {
-		description = description_html and plain_text(description_html) or nil,
-		unlocked_at = unlocked_at,
-	}
+	return AchievementDetails.new(description_html and plain_text(description_html) or nil, unlocked_at)
 end
 
 return M

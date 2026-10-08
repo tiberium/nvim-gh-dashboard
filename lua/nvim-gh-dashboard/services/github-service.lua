@@ -24,7 +24,7 @@ local function dashboard_data(contributions_html, profile_html)
 end
 
 ---@param details_url string
----@param on_success fun(details: { description: string|nil, unlocked_at: string|nil })
+---@param on_success fun(details: AchievementDetails)
 ---@param on_error fun(message: string)
 function M.fetch_achievement_details(details_url, on_success, on_error)
 	GithubClient.fetch_achievement_details_page(details_url, function(html)

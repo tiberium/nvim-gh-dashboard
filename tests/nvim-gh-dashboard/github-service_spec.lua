@@ -5,6 +5,8 @@ describe("GitHub integration", function()
 	local GithubProfile
 	local GithubAchievements
 	local GithubAiUsage
+	local AchievementDetails
+	local AiUsageData
 
 	before_each(function()
 		package.loaded["nvim-gh-dashboard.services.github-service"] = nil
@@ -14,6 +16,8 @@ describe("GitHub integration", function()
 		GithubProfile = require("nvim-gh-dashboard.extractors.github-profile")
 		GithubAchievements = require("nvim-gh-dashboard.extractors.github-achievements")
 		GithubAiUsage = require("nvim-gh-dashboard.extractors.github-ai-usage")
+		AchievementDetails = require("nvim-gh-dashboard.models.achievement-details")
+		AiUsageData = require("nvim-gh-dashboard.models.ai-usage-data")
 	end)
 
 	describe("github-profile extractor", function()
@@ -142,10 +146,12 @@ describe("GitHub integration", function()
 				</div>
 			]]
 
+			local details = GithubAchievements.extract_details(html)
 			assert.same({
 				description = "You want it? You merge it.",
 				unlocked_at = "2024-03-18T12:20:54Z",
-			}, GithubAchievements.extract_details(html))
+			}, details)
+			assert.equals(AchievementDetails, getmetatable(details))
 		end)
 	end)
 
@@ -213,6 +219,7 @@ describe("GitHub integration", function()
 				included_credits_used = 1500,
 				over_pool_credits = 300,
 			}, usage)
+			assert.equals(AiUsageData, getmetatable(usage))
 		end)
 
 		it("returns zero additional budget usage when additional usage is not permitted", function()
